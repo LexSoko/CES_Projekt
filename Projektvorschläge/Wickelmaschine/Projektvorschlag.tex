@@ -2,10 +2,11 @@
 
 Das Ziel dieses Projektes ist es eine Maschine zu bauen,  welche, anhand der vorgegebenen Maße eines Spulenkörpers, automatisiert diese mit Kupferlackdraht umwickeln kann und dabei den, im vorher festgelegten, Spulenwiderstand $R$ möglichst genau trifft. Hierbei soll sowohl die Form des Spulenkörpers, als auch Draht Dicke und Material frei wählbar sein. Die Wicklungen sollen parallel liegen, auch bei mehreren Lagen und Drahtdurchmessern von nur ca. AWG 42 (0,0633 mm).\\
 Die Konstruktion des Gerätes ähnelt der einer Drehbank. Der Spulenkörper soll mittels Servo-/Stepper-Motor gedreht werden, während der Draht über eine Führungseinheit, welche sich auf einer zweiten Achse neben der Hauptdrehachse befindet, gezogen wird. Die Führungseinheit wird mittels eines weiteren Steppermotors und einer Welle linear bewegt.\\
+Die Drehzahl des Spulenkörpers muss zur Steuerung bestimmt werden, z.B. mittels eines Hallsensor, oder bei höheren Geschwindigkeiten durch ein optisches System. Des weiteren muss die Position der Drahtführung ständig erfasst werden. Dies könnte durch die Bestimmung einer fixen Startposition, mittels Endschalter, und die Messung der Wellendrehung realisiert werden. Danach kann die Position rechnerisch ermittelt werden. 
+\\ 
+Um eine gleichmäßige Straffheit der Wicklung zu gewährleisten, muss der aufzuwikelnde Draht stehts eine annähernd konstante Spannung aufweisen. Da es, vorallem bei mehrlagigen Wicklungen, stets zu Beschleunigungsvorgängen der Führungseinheit, und somit zur Erschlaffung des Drahtes, kommt, muss die Spannung mittels einer zusätzlichen Vorrichtung kontinuierlich nachgeregelt werden. Eine Möglichkeit hierfür wäre die konstruktion eines magnetischen Spannsystems, oder einer ähnlichen Vorrichtung.\\
+Da eine möglichst hohe Produktionsgeschwindigkeit bei der Wicklung gewünscht ist, muss bei der Planung der Steuereinheit besonderes Augenmerk auf Reaktionsgeschwindigkeit des gesammten Systems gelgegt werden.\\
+Auf Softwareseite besteht die Herausforderung hauptsächlich aus der Modellierung des Wicklungsprozesses (vorallem für nicht rotationssmetriesche Spulenkörper), sowie der erstellung des Modells für das Spannsystems und die korrekte Implementation des Regelkreises.\\ 
 \\
-Die Drehzahl des Spulenkörpers muss zur Steuerung bestimmt werden, z.B. mittels eines Hallsensor, oder bei höheren Geschwindigkeiten durch ein optisches System. Des weiteren muss die Position der Drahtführung ständig erfasst werden. Dies könnte durch die Bestimmung einer fixen Startposition, mittels Endschalter, und die Messung der Wellendrehung realisiert werden.
-Mechanische Herausforderungen:\\
-Steifigkeit, Statik, Auflösung\\
-Elektronische Herausforderungen:\\
-Drehzahlmessung, Zeitauflösung, Closed Loop Stepper, Endstopper\\
-Programmier Herausforderungen:\\
+
+Falls benötigt/erwünscht können auch gerne Skizzen des geplanten Aufbaus nachgereicht werden.
