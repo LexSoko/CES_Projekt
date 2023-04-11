@@ -137,6 +137,7 @@ dmypy.json
 *.aux
 *.ini
 *report.pdf
+*config.pdf
 *notes.pdf
 *.fdb_latexmk
 *.dvi
