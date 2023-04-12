@@ -1,12 +1,110 @@
-\section{Automatisierter Spulenwickler}
+\section*{Zielsetzung}
+Bau eines automatischen Coil-Winders für Drahtdurchmesser bis zu AWG 42 (0,0633 mm) klein. Spulenkörper mit kreisförmigen Querschnitt, als auch mit nicht rotationssmetrieschem Querschnitt, sollen sowohl mit paralleler Drahtführung, als auch mit \"wave winding\", oder dem teils randomisierten \"scatter winding\", mehrlagig gewickelt werden können. Für nicht rotationssymetriesche Spulenkörper muss eine automatisches Drahtspannungsvorrichtung konstruiert werden, welche einen zuvor einstellbare Spannung aufrechterhält. Weiters soll die zugehörige Software, bei bekannten Materialparametern und Spulenwiderstand $R$, eigenständig die Wicklungszahl bestimmen.  
 
-Das Ziel dieses Projektes ist es eine Maschine zu bauen,  welche, anhand der vorgegebenen Maße eines Spulenkörpers, automatisiert diese mit Kupferlackdraht umwickeln kann und dabei den, im vorher festgelegten, Spulenwiderstand $R$ möglichst genau trifft. Hierbei soll sowohl die Form des Spulenkörpers, als auch Draht Dicke und Material frei wählbar sein. Die Wicklungen sollen parallel liegen, auch bei mehreren Lagen und Drahtdurchmessern von nur ca. AWG 42 (0,0633 mm).\\
-Die Konstruktion des Gerätes ähnelt der einer Drehbank. Der Spulenkörper soll mittels Servo-/Stepper-Motor gedreht werden, während der Draht über eine Führungseinheit, welche sich auf einer zweiten Achse neben der Hauptdrehachse befindet, gezogen wird. Die Führungseinheit wird mittels eines weiteren Steppermotors und einer Welle linear bewegt.\\
-Die Drehzahl des Spulenkörpers muss zur Steuerung bestimmt werden, z.B. mittels eines Hallsensor, oder bei höheren Geschwindigkeiten durch ein optisches System. Des weiteren muss die Position der Drahtführung ständig erfasst werden. Dies könnte durch die Bestimmung einer fixen Startposition, mittels Endschalter, und die Messung der Wellendrehung realisiert werden. Danach kann die Position rechnerisch ermittelt werden. 
-\\ 
-Um eine gleichmäßige Straffheit der Wicklung zu gewährleisten, muss der aufzuwikelnde Draht stehts eine annähernd konstante Spannung aufweisen. Da es, vorallem bei mehrlagigen Wicklungen, stets zu Beschleunigungsvorgängen der Führungseinheit, und somit zur Erschlaffung des Drahtes, kommt, muss die Spannung mittels einer zusätzlichen Vorrichtung kontinuierlich nachgeregelt werden. Eine Möglichkeit hierfür wäre die konstruktion eines magnetischen Spannsystems, oder einer ähnlichen Vorrichtung.\\
-Da eine möglichst hohe Produktionsgeschwindigkeit bei der Wicklung gewünscht ist, muss bei der Planung der Steuereinheit besonderes Augenmerk auf Reaktionsgeschwindigkeit des gesammten Systems gelgegt werden.\\
-Auf Softwareseite besteht die Herausforderung hauptsächlich aus der Modellierung des Wicklungsprozesses (vorallem für nicht rotationssmetriesche Spulenkörper), sowie der erstellung des Modells für das Spannsystems und die korrekte Implementation des Regelkreises.\\ 
-\\
+\section*{Projektaufbau}
 
-Falls benötigt/erwünscht können auch gerne Skizzen des geplanten Aufbaus nachgereicht werden.
+Der Coil-Winder besteht aus einer Hauptachse, auf welcher der Spulenkörper mittels Servo-/Stepper-Motor gedreht wird. Parallel dazu befindet sich eine weitere lineare Achse, auf welcher sich die Drahtführung befindet. Diese wird durch einen Steppermotor, welcher eine Welle dreht, bewegt. Abhängig vom Drahtdurchmesser muss die Führungsspitze natürlich passend gewechselt werden. Um die aktuelle Position der Führungseinheit zu bestimmen werden Endschalter an der Achse befestig, womit eine festgelegte Startposition erreicht werden kann. Aus der Startposition und der gedrehten Stepps kann auf die aktuelle Position umgerechnet werden. Um einen Steppverlust zu verhindern, könnten closed loop Steppermotoren verwendet werden. Mit einem Hallsensor kann die Drehzahl der Hauptachse zusätzlich bestimmt werden.\\
+Die Drahtspannungsvorrichtung besteht aus einem rein mechanischen Klemmmechanismus, welcher eine gewisse Reibung für den Draht bietet, welcher danach in das magnetische Spannsystem geführt wird. Dort wird er über eine Rolle geführt, welche am Ende eines Stabes sitzt. Dieser ist am anderen Ende drehbar gelagert. Mittels eines Elektromagneten, der sich über dem Stab befindet, kann die rücktreibende Kraft, die auf den Draht wirkt, eingestellt werden. Mit einem Magnetfeldsensor kann das Magnetfeld, und mit einem Potentiometer der Winkel des Stabes, gemessen werden.
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{skizze.jpg}
+    \caption{
+        Skizze des Coil-Winders und der magnetischen Spannvorrichtung.
+        \textbf{SV}: Servomotor; 
+        \textbf{NM17}: Steppermotor; 
+        \textbf{BP}: Befestigungsplatte; 
+        \textbf{FN}: Führungsspitze; 
+        \textbf{FM}: Führungsmechanismus; 
+        \textbf{RP4}: Raspberry Pi 4; 
+        \textbf{W}: Welle; 
+        \textbf{LL}: Loslager; 
+        \textbf{FL}: Festlager.
+        \textbf{KST}: Konterreitstock;
+        \textbf{SP}: Spannsystem;
+        \textbf{EM}: Elektromagneten;
+        \textbf{Pot}: Potentiometer;
+        \textbf{H}: Hallsensor;
+        \textbf{D}: Draht;
+    }
+\end{figure}
+
+
+\section*{Physikalische/Hardware Anforderungen}
+\begin{enumerate}
+    \item mechanische Steifigkeit und Genauigkeit der Konstruktiern
+    \item Ermittlung der Wirkkraft des magnetischen Spannsystems.
+    \item Schnelle Schaltzeiten für das Schalten der Steppermotoren.
+    \item Auflösungziel: $\Delta l =$ 0,05~mm.
+\end{enumerate}
+
+
+\section*{Komponenten und Kosten}
+\begin{table}[H]
+    \centering
+    \caption{
+        Skizze
+    }
+    \begin{tabular}{| c | c |}
+        \hline
+        Komponente &  Kosten / \euro{}\\
+        \hline
+        NEMA 17 (closed loop)& 15 - 60  \\
+        \hline
+        Servo Motor & 15 - 60  \\
+        \hline
+        Stepper Driver & 6 - 10  \\
+        \hline
+        sonst. Mat. & 50 - 80 \\
+        \hline
+        Arduino & vorhanden \\
+        \hline
+        RP4 (oder Alternative) & vorhanden \\
+        \hline
+        \hline
+        Summe & 86 - 210  \\
+        \hline
+    \end{tabular}
+\end{table}
+
+
+
+\section*{Software}
+\begin{enumerate}
+    \item Stepper- und Servo-Steuerung
+    \item Magnetfeldsteuerung
+    \item Datenanalyse, Kalibration (RP4 (oder Alternative), C/C++ und Python)
+    \item Simulation der Wicklung
+\end{enumerate}
+
+\section*{Aufwandsabschätzung}
+\begin{table}[H]
+    \centering
+    \caption{
+        Skizze
+    }
+    \begin{tabular}{| c | c |}
+        \hline
+        Arbeitspaket &  Aufwand / h\\
+        \hline
+        Mechanik/Halterungen & 40 - 60  \\
+        \hline
+        Stepper Steuerung / ADC Messung & 10 - 15 \\
+        \hline
+        RP4 Datenanalyse & 10 - 20  \\
+        \hline
+        Kalibration & 25 - 30 \\
+        \hline
+        Debugging & 50 - 100 \\
+        \hline
+        Modellprogrammierung & 30 - 40 \\
+        \hline
+        Mechanisches Testen & 5 - 15 \\
+        \hline
+        \hline
+        Summe & 170 - 280  \\
+        \hline
+    \end{tabular}
+    \label{tab:Aufwand}
+\end{table}
