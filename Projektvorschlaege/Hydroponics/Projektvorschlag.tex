@@ -13,7 +13,7 @@ Aus den Temperatur-, EC- und pH-Wert-Daten soll dann ebenso ein Modell für die 
     \centering
     \includegraphics[width=\linewidth]{skizze.png}
     \caption{
-        Skizze des Coil-Winders und der magnetischen Spannvorrichtung.
+        Skizze des Regulierungsaufbaus am Wasserreservoir.
         \textbf{pH-}: (pH-)-Lösung; 
         \textbf{D}: Dünger-Lösung; 
         \textbf{RVP}: Rotary-Vane-Pump; 
@@ -27,7 +27,8 @@ Aus den Temperatur-, EC- und pH-Wert-Daten soll dann ebenso ein Modell für die 
 
 \section*{Physikalische Anforderungen}
 \begin{enumerate}
-    \item Stuff
+    \item Ausreichende Genauigkeit der Rotary-Vane-Pumps für gute Regelantwort.
+    \item Konsistente Messgenauigkeit des pH- und EC-Sensors.
 \end{enumerate}
 
 
@@ -41,10 +42,22 @@ Aus den Temperatur-, EC- und pH-Wert-Daten soll dann ebenso ein Modell für die 
         \hline
         Komponente &  Kosten / \euro{}\\
         \hline
-        Ding & 15 - 30  \\
+        EC-Sensor & 15 - 70  \\
+        \hline
+        pH-Sensor & 30 - 70  \\
+        \hline
+        Temperatur-Sensor & 5 - 20  \\
+        \hline
+        Rührmotor & 5 - 10  \\
+        \hline
+        Rotary-Vane-Pumps & 30 - 50  \\
+        \hline
+        Raspberry Pi & vorhanden  \\
+        \hline
+        sonstiger Aufbau & 20 - 40  \\
         \hline
         \hline
-        Summe & 110 - 225  \\
+        Summe & 105 - 260  \\
         \hline
     \end{tabular}
     \label{tab:Komponenten}
@@ -53,7 +66,8 @@ Aus den Temperatur-, EC- und pH-Wert-Daten soll dann ebenso ein Modell für die 
 
 \section*{Software}
 \begin{enumerate}
-    \item Code
+    \item Sensormessungen und Motorsteuerung (Python oder C)
+    \item Regelungsmodell (Python)
 \end{enumerate}
 
 \section*{Aufwandsabschätzung}
@@ -66,10 +80,20 @@ Aus den Temperatur-, EC- und pH-Wert-Daten soll dann ebenso ein Modell für die 
         \hline
         Arbeitspaket &  Aufwand / h\\
         \hline
-        Arbeit & 30 - 45  \\
+        Sensormessung und Motorsteuerung & 20 - 40  \\
+        \hline
+        Regelungsmodell & 30 - 50  \\
+        \hline
+        Rotary-Vane-Pumpen & 5 - 15  \\
+        \hline
+        Mechanischer Aufbau & 10 - 20  \\
+        \hline
+        Sensor-/Aktor-Kalibrierung & 30 - 50  \\
+        \hline
+        Debugging & 40 \\
         \hline
         \hline
-        Summe & 120 - 230  \\
+        Summe & 135 - 205  \\
         \hline
     \end{tabular}
     \label{tab:Aufwand}
