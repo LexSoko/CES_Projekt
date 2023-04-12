@@ -16,12 +16,10 @@
 \usepackage{float}
 \usepackage{textcomp}
 \usepackage{gensymb}
-\usepackage{physics}
 \usepackage{stmaryrd}
 \usepackage{graphicx}
 \usepackage[export]{adjustbox}
 \usepackage{a4wide}
-\usepackage{siunitx}
 \usepackage{hyperref}
 \usepackage{multicol}
 \usepackage{makecell}
@@ -33,13 +31,15 @@
     a4paper,
     total={170mm,257mm},
     left=20mm,
-    top=25mm,
+    top=15mm,
    }
 \graphicspath{ {./graphics/} }  %pfad für bilder
 \hypersetup{colorlinks=false}
 \addbibresource{literatur.bib} %Literatur-Resourcen\s
 %\setlength{\headheight}{0.0pt} % macht zwar headheight warnings aber dafür nutz latex die seitengröße besser aus.
-\pagestyle{scrheadings}
+\pagestyle{empty}
+
+
 \newcommand{\subf}[2]{
     {
         \begin{tabular}[c]{@{}c@{}}
@@ -145,22 +145,27 @@
     \end{figure}
 }
 
-\date{\today{}, Location}
+%\date{\vspace{-1cm}\today{}, Graz}
+\date{}
 \author{Aleksey Sokolov, Max Jost, Martin Steiner}
-\title{Projektvorschlag}
+\title{\vspace{-1.5cm}Geigerzähler}
 
 %---------------HEADER TEXT------------------------------------
-\clearpairofpagestyles
-\ihead{\today{} \\ }
-\chead{Max Jost / Aleksey Sokolov / Martin Steiner\\ Projektname }
-\ohead{CES \\ }
-\cfoot{\pagemark \, / \, \pageref{LastPage}}
+%\clearpairofpagestyles
+%\ihead{\today{} \\ }
+%\chead{Max Jost / Aleksey Sokolov / Martin Steiner\\ Projektname }
+%\ohead{CES \\ }
+%\cfoot{\pagemark \, / \, \pageref{LastPage}}
 
 %---------------DOCUMENT TEXT------------------------------------
 \begin{document}
-
-
-%\input{chapters/1_anmerkung}
-\input{Projektvorschlag.tex}
-\printbibliography
+    \begin{multicols}{2}
+        \maketitle
+        \vspace{-1cm}
+        \par\noindent\rule{\linewidth}{0.4pt}
+        \\
+        \\
+        \input{Projektvorschlag.tex}
+        \printbibliography
+    \end{multicols}
 \end{document}
