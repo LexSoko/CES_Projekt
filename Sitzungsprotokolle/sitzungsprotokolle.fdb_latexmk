@@ -1,13 +1,13 @@
 # Fdb version 4
-["biber sitzungsprotokolle"] 1682579243 "sitzungsprotokolle.bcf" "sitzungsprotokolle.bbl" "sitzungsprotokolle" 1682579438 0
+["biber sitzungsprotokolle"] 1682579243 "sitzungsprotokolle.bcf" "sitzungsprotokolle.bbl" "sitzungsprotokolle" 1682579577 0
   "./literatur.bib" 1682578038 0 d41d8cd98f00b204e9800998ecf8427e ""
-  "sitzungsprotokolle.bcf" 1682579436 106838 e3d6681c3b89f9e84ba92898b23b1a0c "pdflatex"
+  "sitzungsprotokolle.bcf" 1682579575 106838 e3d6681c3b89f9e84ba92898b23b1a0c "pdflatex"
   (generated)
   "sitzungsprotokolle.bbl"
   "sitzungsprotokolle.blg"
   (rewritten before read)
-["pdflatex"] 1682579430 "c:/Users/marti/Documents/GIT/CES_Projekt/Sitzungsprotokolle/sitzungsprotokolle.tex" "sitzungsprotokolle.pdf" "sitzungsprotokolle" 1682579438 0
-  "c:/Users/marti/Documents/GIT/CES_Projekt/Sitzungsprotokolle/sitzungsprotokolle.tex" 1682578535 2844 68beb35e0622290d7eea77e906baafeb ""
+["pdflatex"] 1682579569 "c:/Users/marti/Documents/GIT/CES_Projekt/Sitzungsprotokolle/sitzungsprotokolle.tex" "sitzungsprotokolle.pdf" "sitzungsprotokolle" 1682579577 0
+  "c:/Users/marti/Documents/GIT/CES_Projekt/Sitzungsprotokolle/sitzungsprotokolle.tex" 1682579567 2853 2f1c1e9a21cb1cc5f4eb062db230aac4 ""
   "c:/texlive/2022/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc" 1673698793 2971 def0b6c1f0b107b3b936def894055589 ""
   "c:/texlive/2022/texmf-dist/fonts/map/fontname/texfonts.map" 1673702203 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "c:/texlive/2022/texmf-dist/fonts/tfm/jknappen/ec/ecbx1000.tfm" 1673700648 3584 2d666ecf6d466d8b007246bc2f94d9da ""
@@ -197,12 +197,12 @@
   "chapters/8_sitzung.tex" 1682578614 0 d41d8cd98f00b204e9800998ecf8427e ""
   "chapters/9_sitzung.tex" 1682578617 0 d41d8cd98f00b204e9800998ecf8427e ""
   "chapters/anmerkung.tex" 1682578631 93 37ece9bef86457d284d34fd60f9d8fff ""
-  "sitzungsprotokolle.aux" 1682579436 1219 09e109b0a44ddd0c5984e1fd06a728de "pdflatex"
+  "sitzungsprotokolle.aux" 1682579575 1219 09e109b0a44ddd0c5984e1fd06a728de "pdflatex"
   "sitzungsprotokolle.bbl" 1682579249 486 ee04f40f768daeed26442158e95aba61 "biber sitzungsprotokolle"
-  "sitzungsprotokolle.out" 1682579436 96 d2655d841312e5d79faa943e3c012edb "pdflatex"
-  "sitzungsprotokolle.run.xml" 1682579436 2432 34826ab1558215bd7cc3a8e42c47ca51 "pdflatex"
-  "sitzungsprotokolle.tex" 1682578535 2844 68beb35e0622290d7eea77e906baafeb ""
-  "sitzungsprotokolle.toc" 1682579436 157 2fa3e8ef7677deb0376ae40a3b174fc4 "pdflatex"
+  "sitzungsprotokolle.out" 1682579575 96 d2655d841312e5d79faa943e3c012edb "pdflatex"
+  "sitzungsprotokolle.run.xml" 1682579575 2432 34826ab1558215bd7cc3a8e42c47ca51 "pdflatex"
+  "sitzungsprotokolle.tex" 1682579567 2853 2f1c1e9a21cb1cc5f4eb062db230aac4 ""
+  "sitzungsprotokolle.toc" 1682579575 157 2fa3e8ef7677deb0376ae40a3b174fc4 "pdflatex"
   (generated)
   "sitzungsprotokolle.aux"
   "sitzungsprotokolle.bcf"
