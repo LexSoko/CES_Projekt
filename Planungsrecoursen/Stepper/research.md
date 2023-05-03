@@ -11,6 +11,7 @@
 
 [ST-Microelectronics Stepper Motor Driving [4]](http://users.ece.utexas.edu/~valvano/Datasheets/Stepper_ST.pdf)
 
+[Stepper Drehmoment [5]](https://www.faulhaber.com/de/know-how/tutorials/schrittmotoren-tutorial-fakten-und-mythen-zum-mikroschrittbetrieb/?gclid=CjwKCAjwjMiiBhA4EiwAZe6jQ3GSjoTto7YyuFtEhy8_d7abQlY-eyBkZPU3vqFnK36cBi9Z5TGmohoC2rkQAvD_BwE)
 ## Ergebnisse
 Stepper Motor (SM); Stepper Driver (SD)
 
@@ -22,6 +23,18 @@ Für Regelung evtl. benötigt kann aber sein, dass das von SD übernommen wird.
 
 Kann auch rein durch Referenzschalter gelöst werden und dann rein Steuerungstechnisch die Schritte vorgegeben werden.
 
+### Drehmomentverhalten (SM)
+Laut **[5]** ist bei Mikroschrittbetrieb das Drehmoment erstens nicht mehr Sinusförmig sondern verzerrt(siehe Foto) und das inkrementalmoment nimmt drastisch ab siehe Formeln.
+![Drehmoment Wellenposition](Drehmoment_Wellenposition.PNG)
+
+$$M_{INC} = M_{HFS} * sin(\frac{90°}{\mu_{PFS}})$$
+$$M_N = M_{HFS} * sin(\frac{90° * N}{\mu_{PFS}})$$
+
+$\mu_{PFS}$ = Anzahl Mikrosschritte pro Vollschritt\
+$N$ = Anzahl erfolgter Mikroschritte [Ganzzahl] $N$ Kleiner oder gleich $\mu_{PFS}$\
+$M_{HFS}$ = Haltemoment Vollschritt [Nm]\
+$M_{INC}$ = Inkrementalmoment pro Mikroschritt [Nm]\
+$M_N$ = Inkrementalmoment für $N$ Mikroschritte [Nm] $N$ Kleiner oder gleich $\mu_{PFS}$\
 ### Parameter (Schnittstelle)(SM)
 - Drehmoment (mechanisch)
 - Halte-/Stillstandsmoment (mechanisch)
