@@ -26,7 +26,7 @@ F_T_t = lambda t: m_T * a_z_D_t(t)
 
 ###############     Spindel      ###########
 µ_Sp = 0.1                      # N/N       reibung spindel
-alpha_Sp = 30                   # °         steigungswinkel spindel
+alpha_Sp = 6                    # °         steigungswinkel spindel
 R_Sp = 0.004                    # m/°       steigung Spindel
 
                                 # N/N       wirkungsgrad Spindel
