@@ -218,7 +218,7 @@ Runge-Kutta method, dy/dx = .3048 / sqrt( (0.075*sin(y))^2 + (0.0075*cos(y))^2 +
 # theta(t) Funktion wird über Wolfram Alpha aus DGL berechnet
 df_thet = pd.read_csv(".//Planungsrecoursen//Hauptachse_Momentberechnung//HA_thet_t.csv",delimiter=";")
 
-t = np.linspace(0,3/f_0,5000)
+#t = np.linspace(0,3/f_0,5000)
 t = df_thet["t"]
 
 thet_t_arr = df_thet["thet"]
@@ -227,7 +227,7 @@ alph_t_arr = calc_deriv(omeg_t_arr,t,1)
 
 r_t_arr = np.sqrt((r_g*np.cos(thet_t_arr))**2 + (r_k*np.sin(thet_t_arr))**2)
 
-v_t_arr = [v_thet(thet_t_arr[i],omeg_t_arr[i]) for i in range(3)]
+#v_t_arr = [v_thet(thet_t_arr[i],omeg_t_arr[i]) for i in range(3)]
 v_t_arr = v_thet(thet_t_arr,omeg_t_arr)
 
 I_0_calc = I_0_sp + I_0_Well
