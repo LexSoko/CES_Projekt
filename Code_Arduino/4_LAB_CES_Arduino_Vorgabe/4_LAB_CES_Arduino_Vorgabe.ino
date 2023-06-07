@@ -134,6 +134,17 @@ void debugString( const char *start_str , float variable , const char *ending_st
   strcat(str,ending_str);
   Serial.println(str);
 }
+// Zur Verfügung gestellte Debug Funktion - mit dieser Funktion können Sie 
+// jederzeit eine Variable vom Typ Float (und natürlich auch integer) über die Serielle Schnittstelle ausgeben.
+void logDat( float variable1,float variable2 )
+{
+  char str[50]= {0};
+  char sep[1] = ";";
+  dtostrf(variable1, 2, 2, &str[strlen(str)]);
+  strcat(str,sep);
+  dtostrf(variable2, 2, 2, &str[strlen(str)]);
+  Serial.println(str);
+}
 
 // Zur Verfügung gestellte Einlesefunktion des Lichtsensors.
 // Die Messwerte werden in der Einheit LUX ausgegeben.
