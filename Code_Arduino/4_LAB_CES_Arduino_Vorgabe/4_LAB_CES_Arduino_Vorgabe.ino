@@ -149,15 +149,68 @@ float getLuxValue()
 }
 
 
+void SetRGBLed(int Value){
+  if(Value == 0)
+  {
+    digitalWrite(R_PIN, LOW);
+    digitalWrite(G_PIN, LOW);
+    digitalWrite(B_PIN, LOW);
 
+  }
+  if(Value == 1)
+  {
+    digitalWrite(R_PIN, HIGH);
+    digitalWrite(G_PIN, LOW);
+    digitalWrite(B_PIN, LOW);
+  }
+  if(Value == 2)
+  {
+    digitalWrite(R_PIN, LOW);
+    digitalWrite(G_PIN, HIGH);
+    digitalWrite(B_PIN, LOW);
+  }
+  if(Value == 3)
+  {
+    digitalWrite(R_PIN, LOW);
+    digitalWrite(G_PIN, LOW);
+    digitalWrite(B_PIN, HIGH);
+  }
+}
 
 
 /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 /*                    Main Loop                                     */
 /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
+int counter = 0;
+float TP_x[10];
+int TP_Index_x = 0;
+float TP_Filter_x(float Eingangswert)
+{
+  TP_x[TP_Index_x] = Eingangswert;
+  TP_Index_x++;
+  if(TP_Index_x >= 10)
+    TP_Index_x = 0;
+    int i = 0;
+    float Ruckgabewert = 0.0;
+    for( i = 0 ; i < 10; i++)
+      Ruckgabewert += TP_x[i];
+    return Ruckgabewert/10.0;
+}
 void loop()
 {
-  
-  delay(200); 
+  if( DistanceSensor.isRangeComplete())
+  {
+    int Messwert = DistanceSensor.readRange();
+    if(Messwert > 200)
+      Messwert = 200;
+      Serial.println(String(Messwert));
+  } 
+  else
+  {
+      Serial.println("range not complete");
+  }
+
+
+
 }
