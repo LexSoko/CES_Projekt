@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import struct
 
-arduino = serial.Serial(port='COM3', baudrate=115200)
+#arduino = serial.Serial(port='COM9', baudrate=115200)
 """
 Bug1:
  -  Description:
@@ -30,33 +30,80 @@ Bug1:
 #    data = arduino.readline()
 #    return data
 
-def readRotaryEncoder():
-    data = arduino.read(10) 
-    return data
+class serial_mma_data_stream:
+
+    def __init__(self, port:str, baudrate:int, len:int=10):
+        self.port = port
+        self.baudrate = baudrate
+        self.conn = serial.Serial(port=self.port, baudrate=self.baudrate)
+        self.start = True
+        self.len = 10
+
+    def get_next_meas(self) -> bytes:
+        numbytes = self.conn.in_waiting
+        if(numbytes <=10):
+            return None
+
+        if(self.start):
+            data = self.conn.readline()
+            print(''.join(format(x, '02x') for x in data))
+            print("start sequence")
+            start = False
+
+        return self.conn.read(self.len)
+    
+    def get_next_rot_enc(self) -> tuple():
+        meas_data = self.get_next_meas()
+        if meas_data is None:
+            return None
+
+        rot_pos = int.from_bytes(meas_data[0:4], byteorder='little')
+        timeVal = int.from_bytes(meas_data[4:8], byteorder='little')
+
+        return (timeVal,rot_pos,meas_data)
 
 
+
+#ädef readRotaryEncoder():
+#ä    if(start == 1):
+#ä        data = arduino.readline()
+#ä        start = 0
+#ä    data = arduino.read(10) 
+#ä    return data
+
+
+arduino = serial_mma_data_stream("COM9", 115200)
 rotPosition_ls = []
 timeVal_ls = []
-bytes_ls = []
+#bytes_ls = []
 timeVal = 0
-debug_flag = False
-while timeVal <= 1e7:
-    numbytes = arduino.in_waiting
-    if numbytes <= 10:
-        continue
-    
-    bytes_ls.append(numbytes)
+rot_pos = 0
+databyt = bytes()
+#debug_flag = False
+i = 0
+while i < 20:
+    #numbytes = arduino.in_waiting
+    #if numbytes <= 10:
+    #    continue
+    retVal = arduino.get_next_rot_enc()
+
+    if(retVal is not None):
+        (timeVal,rot_pos,databyt) = retVal
+        i = i + 1
+
+
+    #bytes_ls.append(numbytes)
     #while not (numbytes > 10):
     #    time.sleep(.001)
 
-    databyt = readRotaryEncoder()
+    #databyt = readRotaryEncoder()
     
     #print(databyt) # printing the value
     
-    value = int.from_bytes(databyt, byteorder='little')
+    #value = int.from_bytes(databyt, byteorder='little')
     
-    rot_pos = int.from_bytes(databyt[0:4], byteorder='little')
-    timeVal = int.from_bytes(databyt[4:8], byteorder='little')
+    #rot_pos = int.from_bytes(databyt[0:4], byteorder='big')
+    #timeVal = int.from_bytes(databyt[4:8], byteorder='big')
     
     #rot_pos = value >> (32 + 16)
     #if rot_pos != 0:
@@ -80,6 +127,10 @@ while timeVal <= 1e7:
     #    debug_flag = False
         
     
+
+
+# Oachkatzlscjowaf 082
+
     
 # rotaryEncoder_arr = np.array(timeVal_ls, rotPosition_ls)
 
