@@ -5,7 +5,54 @@ import numpy as np
 import matplotlib.pyplot as plt
 import struct
 
-arduino = serial.Serial(port='COM3', baudrate=115200)
+arduino = serial.Serial(
+    port='COM9',
+    baudrate=57600,
+    bytesize=serial.EIGHTBITS,
+    parity=serial.PARITY_NONE,
+    stopbits=serial.STOPBITS_ONE,
+    xonxoff=0,
+    rtscts=0
+    )
+
+"""
+Bug2:
+ -  Description:
+    Python program stopped right at startup and gave completely wrong data
+
+ -  Problem:
+    arduino propably sends data from already running programm which has to big timestamps
+    so python programm stopps immediately
+
+ -  Solution:
+    reset arduino from python side
+    following code
+"""
+# Toggle DTR to reset Arduino
+arduino.setDTR(False)
+time.sleep(1)
+
+# toss any data already received, see
+# link
+arduino.flushInput()
+
+arduino.set_buffer_size(rx_size=16384)
+
+arduino.setDTR(True)
+
+
+"""
+Limitation Problem1:
+ -  Limitation source:
+    Craptop (Max)
+
+ -  Issue:
+    Craptop can't handle baud rate 115200. Highest possible baud rate is 57600
+
+ -  Workaround:
+    run program with max baud rate 57600 on arduino and in python
+"""
+
 """
 Bug1:
  -  Description:
@@ -68,7 +115,7 @@ while timeVal <= 1e7:
     
     #print("Databytes: ",''.join(format(x, '02x') for x in databyt))
     #print("rot_pos:   ",rot_pos," time_pos:    ",timeVal, "numbytes:    ",numbytes)
-    print(rot_pos,";",timeVal,";",''.join(format(x, '02x') for x in databyt))
+    print(rot_pos,";",timeVal,";",''.join(format(x, '02x') for x in databyt),";",numbytes)
     #if(rot_pos >= 2555 and rot_pos <=2565):
     #    print("Databytes: ",''.join(format(x, '02x') for x in databyt))
     #    print("rot_pos:   ",rot_pos," time_pos:    ",timeVal, "numbytes:    ",numbytes)
@@ -84,6 +131,7 @@ while timeVal <= 1e7:
 # rotaryEncoder_arr = np.array(timeVal_ls, rotPosition_ls)
 
 #print(rotaryEncoder_arr)
+print(np.asarray(bytes_ls).max())
 plt.scatter(timeVal_ls,rotPosition_ls)
-#plt.scatter(np.asarray(timeVal_ls), np.asarray(bytes_ls)*100)
+plt.scatter(np.asarray(timeVal_ls), np.asarray(bytes_ls)*100)
 plt.show()
