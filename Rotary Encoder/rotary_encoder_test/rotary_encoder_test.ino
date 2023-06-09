@@ -9,7 +9,7 @@ Encoder rotaryEncoder(DATA_PIN_A, DATA_PIN_B);
 
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(57600);
   // Serial.println("Rotary Encoder Test:");
 }
 
