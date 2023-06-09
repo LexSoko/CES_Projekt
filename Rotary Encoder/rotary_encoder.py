@@ -110,6 +110,7 @@ for i in range(0,200):
         (loadcell_raw,loadcell_timeVal,val3) = data 
         print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:", val3)
 
+
         loadcell_raw_ls.append(loadcell_raw)
         loadcell_timeVal_ls.append(loadcell_timeVal)
         loadcell_converted_ls.append(loadcell_raw/(arduino.calibration_factor) - arduino.offset)
