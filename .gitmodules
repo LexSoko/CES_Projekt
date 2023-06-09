@@ -1,0 +1,4 @@
+[submodule "TMCStepper"]
+	path = TMCStepper
+	url = https://github.com/teemuatlut/TMCStepper.git
+	branch = master
