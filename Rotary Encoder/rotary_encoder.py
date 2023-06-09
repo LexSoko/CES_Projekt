@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 import struct
 
 arduino = serial.Serial(
-    port='COM9',
+    port='COM3',
     baudrate=57600,
     bytesize=serial.EIGHTBITS,
+    
     parity=serial.PARITY_NONE,
     stopbits=serial.STOPBITS_ONE,
     xonxoff=0,
