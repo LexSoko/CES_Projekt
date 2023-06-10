@@ -145,22 +145,58 @@ class serial_mma_data_stream:
         if meas_loadcell is None: 
             return None
         
-        call_byte = meas_loadcell[0]
-        # if cal then data bytes have flag : 0b1000 0000 xxxx xxxx .. xxxx xxxx 
+        
+        """
+
+        Bug3:
+
+        Description:
+        Incoming Data was was formatted as signed long and the function int.frombytes() read it as unsigned
+
+        Problem:
+        As soon as negative values where present the value skyrocketed
+
+        Solution:
+        Reading the documentation of the function and declaring with signed=True that the value is signed
+
+        Bug4:
+        Description:
+        The callbyte was read seemingly random without initiating the callibration sequence. 
+        
+
+        Problem:
+        Offcourse it wasnt random -> the LSB of the raw value was send as the first byte because of endianes
+        and by coincidence the LSB of the raw value was 0x80 which was the same valuue as the calibration flag.
+        Therefore the callibration value was overwritten more than once without starting the calibrationn sequence.
+
+        Solution:
+        The reading byteorder was set to little which means that the least significant byte was read first.  
+        The index of the calibration flag byte was changed from meas_loadcell[0] -> meas_loadcell[3]
+
+        """
+        call_byte = meas_loadcell[3]
+            # if cal then data bytes have flag : 0b1000 0000 xxxx xxxx .. xxxx xxxx
+            # r1 is raw valu without weight
+            #r2 is raw value with weight
+            # m(r) =  (r - offset)k
+            # offset = r1
+            # k = cal_weight / (r2 - r1)
         if call_byte == 128:
-            cal_raw = int.from_bytes(meas_loadcell[1:4], byteorder = "little")
-            self.calibration_factor = float(cal_raw)/self.calibration_weight
-            self.offset = int.from_bytes(meas_loadcell[4:8], byteorder = "little")
+            r1 = int.from_bytes(meas_loadcell[0:3], byteorder = "little",signed=True)
+            r2 = int.from_bytes(meas_loadcell[4:8], byteorder = "little", signed=True)
+
+            self.calibration_factor = self.calibration_weight/float(r2-r1)
+            self.offset = r1 
             return (self.calibration_factor,self.offset,meas_loadcell,True)
         else:
-            loadcell_raw = int.from_bytes(meas_loadcell[0:4], byteorder= "little")
+            loadcell_raw = int.from_bytes(meas_loadcell[0:4], byteorder= "little", signed=True)
             loadcell_timeVal = int.from_bytes(meas_loadcell[4:8], byteorder= "little")
             return (loadcell_raw,loadcell_timeVal,meas_loadcell,False)
     
 
 
 
-arduino = serial_mma_data_stream("COM9", 57600,16384,500)
+arduino = serial_mma_data_stream("COM9", 57600,16384,177)
 rotPosition_ls = []
 timeVal_ls = []
 #bytes_ls = []
@@ -172,23 +208,33 @@ loadcell_raw_ls= []
 loadcell_converted_ls = []
 loadcell_timeVal_ls = []
 i = 0
-for i in range(0,200):
+while i<5000:
     
 
     data = arduino.get_next_loadcell()
     if(data is not None):
-        (loadcell_raw,loadcell_timeVal,val3) = data 
-        print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:", val3)
+        (loadcell_raw,loadcell_timeVal,val3,bool) = data 
+        if bool:
+#    print(rot_pos,";",timeVal,";",''.join(format(x, '02x') for x in databyt))
+            print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:", ''.join(format(x, '02x') for x in val3))
 
-
-        loadcell_raw_ls.append(loadcell_raw)
-        loadcell_timeVal_ls.append(loadcell_timeVal)
-        loadcell_converted_ls.append(loadcell_raw/(arduino.calibration_factor) - arduino.offset)
+        
+        else:
+            loadcell_raw_ls.append(loadcell_raw)
+            loadcell_timeVal_ls.append(loadcell_timeVal)
+            if ((i%100)==0):
+                print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:",  ''.join(format(x, '02x') for x in val3),"i",i)
+            i += 1
        
-for i in loadcell_converted_ls:
-    print(i)   
+       
+for r in loadcell_raw_ls:
+    loadcell_converted_ls.append((r - arduino.offset)*arduino.calibration_factor)
+plt.scatter(np.array(loadcell_timeVal_ls)/1e6,loadcell_raw_ls)
 
-plt.scatter(loadcell_timeVal_ls,loadcell_converted_ls )
+plt.show()
+plt.cla()
+plt.plot(np.array(loadcell_timeVal_ls)/1e6,loadcell_converted_ls, "b-",label= f"calibration_factor={arduino.calibration_factor},offset={arduino.offset}" )
+plt.legend(loc="best")
 plt.show()
 
 
