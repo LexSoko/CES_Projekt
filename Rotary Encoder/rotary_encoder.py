@@ -1,11 +1,41 @@
+# intro
+# This file acts as a program development skript
+# scope of this code is:
+# - first rotary encoder and hx711 weight cell serial communication handler
+# - simple visualization by plotting received values
+# - bug, limitation and problem documentation
+
 # Importing Libraries
 import serial
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-import struct
 
-#arduino = serial.Serial(port='COM9', baudrate=115200)
+# documentation stuff
+"""
+Limitation Problem1:
+ -  Limitation source:
+    Craptop (Max)
+
+ -  Issue:
+    Craptop can't handle baud rate 115200. Highest possible baud rate is 57600
+
+ -  Workaround:
+    run program with max baud rate 57600 on arduino and in python
+"""
+"""
+Bug2:
+ -  Description:
+    Python program stopped right at startup and gave completely wrong data
+
+ -  Problem:
+    arduino propably sends data from already running programm which has to big timestamps
+    so python programm stopps immediately
+
+ -  Solution:
+    reset arduino from python side
+    following code
+"""
 """
 Bug1:
  -  Description:
@@ -24,39 +54,74 @@ Bug1:
     excactly 10 bytes
 """
 
-#def write_read(x):
-#    arduino.write(bytes(x, 'utf-8'))
-#    time.sleep(0.05)
-#    data = arduino.readline()
-#    return data
-
 class serial_mma_data_stream:
+    """Serial Data reading class for weight cell and rotary encoder
+    """
 
     def __init__(self, port:str, baudrate:int,  rx_size: int,calibration_weight:float, len:int=10):
+        """Creates new instance of the Serial Data reading class
+
+        Args:
+            port (str): COM Port descriptive name (eg. COM3)
+            baudrate (int): Baudrate of serial connection 
+            rx_size (int): Recommendation value for OS serial buffer size
+            calibration_weight (float): Mass of the calibration weight in Gramms
+            len (int, optional): Length of one data packet. Defaults to 10 (4 byte value, 4 byte time(mus),2 byte delimiter).
+        """
+        # Serial port stuff
         self.port = port
         self.baudrate = baudrate
-        self.rx_size = rx_size
         self.conn = serial.Serial(port=self.port, baudrate=self.baudrate)
-        self.start = True
+        self.rx_size = rx_size
+        
+        # data protocol stuff
         self.len = 10
+        
+        # weigth cell stuff
+        self.start = True
         self.calibration_weight = calibration_weight
         self.calibration_factor = 1
         self.offset = 0
+        
+        # reseting arduino and serial input buffer to start with clean data
         self.conn.setDTR(False)
         time.sleep(1)
         self.conn.flushInput()
         self.conn.set_buffer_size(rx_size = self.rx_size)
         self.conn.setDTR(True)
+        
+        
 
-    def get_next_meas(self) -> bytes:
+    def get_next_meas(self, len:int = None) -> bytes:
+        """Reads out predefined (self.len) or passed (len:int =None) number of bytes out of COM buffer if available
+
+        Args:
+            len (int, optional): custom number of bytes to read out. Defaults to None.
+
+        Returns:
+            bytes: byte array read out from the buffer. None if not enough bytes available.
+        """
         numbytes = self.conn.in_waiting
-        if(numbytes <=10):
-            return None
 
-
-        return self.conn.read(self.len)
+        if(len is not None):
+            if(numbytes <=len):
+                return None
+            return self.conn.read(len)
+        else:
+            if(numbytes <=self.len):
+                return None
+            return self.conn.read(self.len)
+    
     
     def get_next_rot_enc(self) -> tuple():
+        """Reads out new rotary encoder data if available.
+
+        Args:
+            self (_type_): instance
+
+        Returns:
+            tuple(rot_timeVal,rot_pos,meas_data): rotary encoder data plus raw bytes
+        """
         meas_data = self.get_next_meas()
         if meas_data is None:
             return None
@@ -65,29 +130,34 @@ class serial_mma_data_stream:
         rot_timeVal = int.from_bytes(meas_data[4:8], byteorder='little')
 
         return (rot_timeVal,rot_pos,meas_data)
+    
+    
     def get_next_loadcell(self) -> tuple():
+        """Reads out new weight cell data if available. Additionally detects calibration value and offset out of data.
+
+        Args:
+            self (_type_): instance
+
+        Returns:
+            tuple(loadcell_raw,loadcell_timeVal,meas_loadcell): load cell data plus raw bytes
+        """
         meas_loadcell = self.get_next_meas()
         if meas_loadcell is None: 
             return None
         
         call_byte = meas_loadcell[0]
+        # if cal then data bytes have flag : 0b1000 0000 xxxx xxxx .. xxxx xxxx 
         if call_byte == 128:
-            self.calibration_factor = (float(int.from_bytes(meas_loadcell[1:4]), byteorder = "little"))/self.calibration_weight
-            self.offset = int.from_bytes(meas_loadcell[4:8])
+            cal_raw = int.from_bytes(meas_loadcell[1:4], byteorder = "little")
+            self.calibration_factor = float(cal_raw)/self.calibration_weight
+            self.offset = int.from_bytes(meas_loadcell[4:8], byteorder = "little")
+            return (self.calibration_factor,self.offset,meas_loadcell,True)
         else:
             loadcell_raw = int.from_bytes(meas_loadcell[0:4], byteorder= "little")
             loadcell_timeVal = int.from_bytes(meas_loadcell[4:8], byteorder= "little")
-            return (loadcell_raw,loadcell_timeVal,meas_loadcell)
+            return (loadcell_raw,loadcell_timeVal,meas_loadcell,False)
     
 
-
-
-#ädef readRotaryEncoder():
-#ä    if(start == 1):
-#ä        data = arduino.readline()
-#ä        start = 0
-#ä    data = arduino.read(10) 
-#ä    return data
 
 
 arduino = serial_mma_data_stream("COM9", 57600,16384,500)
