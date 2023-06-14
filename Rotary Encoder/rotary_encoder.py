@@ -212,7 +212,9 @@ loadcell_raw_ls= []
 loadcell_converted_ls = []
 loadcell_timeVal_ls = []
 i = 0
-while i<60:
+
+
+while i<300:
     
 
     data = arduino.get_next_loadcell()
@@ -230,17 +232,19 @@ while i<60:
                 print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:",  ''.join(format(x, '02x') for x in val3),"i",i)
             print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:",  ''.join(format(x, '02x') for x in val3),"i",i)
             
-            i = loadcell_timeVal/1e6
+            i = loadcell_timeVal/1e6 
        
-       
+#saving the converted data into csv       
 for r in loadcell_raw_ls:
     loadcell_converted_ls.append((r - arduino.offset)*arduino.calibration_factor)
-loadcell_csv = pd.DataFrame([loadcell_timeVal_ls,loadcell_converted_ls]).T
-loadcell_csv.to_csv(path + "\\Rotary Encoder\\loadcell_csv_data\\resolution_test.csv", sep= ";")
+save_data = False
+if save_data == True:
+    loadcell_csv = pd.DataFrame([loadcell_timeVal_ls,loadcell_converted_ls]).T
+    loadcell_csv.to_csv(path + "\\Rotary Encoder\\loadcell_csv_data\\resolution_test_300s.csv", sep= ";")
 
 
-f = False
-if f ==True:    
+plot = False
+if plot ==True:    
     plt.scatter(np.array(loadcell_timeVal_ls)/1e6,loadcell_raw_ls)
 
     plt.show()
