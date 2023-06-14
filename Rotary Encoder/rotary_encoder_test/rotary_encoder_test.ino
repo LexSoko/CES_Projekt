@@ -29,7 +29,7 @@ void syncISR() {
 /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 /*                    Functions                                     */
 /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
-void syncController(bool sendflag = false, int INTERRUPT_PIN_SYNC = 2, int SYNC_SEND = 4 ) {
+void syncController(bool sendflag = false, int INTERRUPT_PIN_SYNC = 7, int SYNC_SEND = 4 ) {
   
   delay(50);
 
@@ -52,7 +52,7 @@ void syncController(bool sendflag = false, int INTERRUPT_PIN_SYNC = 2, int SYNC_
   // Serial.write((byte*)&syncTime, sizeof(syncTime));
   // Serial.println();
 
-  delay(1000);
+  delay(100);
 }
 
 
@@ -62,7 +62,7 @@ void syncController(bool sendflag = false, int INTERRUPT_PIN_SYNC = 2, int SYNC_
 /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 void setup() {
   Serial.begin(57600);
-  syncController(true);
+  // syncController(true);
 }
 
 
