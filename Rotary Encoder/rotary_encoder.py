@@ -62,7 +62,7 @@ class serial_mma_data_stream:
     """Serial Data reading class for weight cell and rotary encoder
     """
 
-    def __init__(self, port:str, baudrate:int,  rx_size: int,calibration_weight:float, len:int=10):
+    def __init__(self, port:str, baudrate:int,  rx_size: int=4096,calibration_weight:float=177, len:int=10):
         """Creates new instance of the Serial Data reading class
 
         Args:
