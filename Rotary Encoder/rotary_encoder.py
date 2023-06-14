@@ -10,6 +10,10 @@ import serial
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+import os
+#returns current directory
+path = os.getcwd()
 
 # documentation stuff
 """
@@ -208,7 +212,7 @@ loadcell_raw_ls= []
 loadcell_converted_ls = []
 loadcell_timeVal_ls = []
 i = 0
-while i<5000:
+while i<60:
     
 
     data = arduino.get_next_loadcell()
@@ -224,18 +228,26 @@ while i<5000:
             loadcell_timeVal_ls.append(loadcell_timeVal)
             if ((i%100)==0):
                 print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:",  ''.join(format(x, '02x') for x in val3),"i",i)
-            i += 1
+            print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:",  ''.join(format(x, '02x') for x in val3),"i",i)
+            
+            i = loadcell_timeVal/1e6
        
        
 for r in loadcell_raw_ls:
     loadcell_converted_ls.append((r - arduino.offset)*arduino.calibration_factor)
-plt.scatter(np.array(loadcell_timeVal_ls)/1e6,loadcell_raw_ls)
+loadcell_csv = pd.DataFrame([loadcell_timeVal_ls,loadcell_converted_ls]).T
+loadcell_csv.to_csv(path + "\\Rotary Encoder\\loadcell_csv_data\\resolution_test.csv", sep= ";")
 
-plt.show()
-plt.cla()
-plt.plot(np.array(loadcell_timeVal_ls)/1e6,loadcell_converted_ls, "b-",label= f"calibration_factor={arduino.calibration_factor},offset={arduino.offset}" )
-plt.legend(loc="best")
-plt.show()
+
+f = False
+if f ==True:    
+    plt.scatter(np.array(loadcell_timeVal_ls)/1e6,loadcell_raw_ls)
+
+    plt.show()
+    plt.cla()
+    plt.plot(np.array(loadcell_timeVal_ls)/1e6,loadcell_converted_ls, "b-",label= f"calibration_factor={arduino.calibration_factor},offset={arduino.offset}" )
+    plt.legend(loc="best")
+    plt.show()
 
 
 
