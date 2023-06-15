@@ -6,3 +6,7 @@
 	path = Encoder
 	url = https://github.com/PaulStoffregen/Encoder.git
 	branch = master
+[submodule "FastAccelStepper"]
+	path = FastAccelStepper
+	url = https://github.com/gin66/FastAccelStepper.git
+	branch = master
