@@ -2,3 +2,11 @@
 	path = TMCStepper
 	url = https://github.com/teemuatlut/TMCStepper.git
 	branch = master
+[submodule "Encoder"]
+	path = Encoder
+	url = https://github.com/PaulStoffregen/Encoder.git
+	branch = master
+[submodule "FastAccelStepper"]
+	path = FastAccelStepper
+	url = https://github.com/gin66/FastAccelStepper.git
+	branch = master
