@@ -29,21 +29,24 @@ loading points appears in the upload terminal!
 //#define DIAG_PIN_2          19          // STALL motor 2
 #define EN_PIN              2          // Enable
 #define SERIAL_PORT_2       Serial2    // TMC2208/TMC2224 HardwareSerial port
-#define DRIVER_ADDRESS_1    0b00       // TMC2209 Driver address according to MS1 and MS2
 
+#define DRIVER_ADDRESS_1    0b00       // TMC2209 Driver address according to MS1 and MS2
 #define DIR_PIN_1           4          // Direction
 #define STEP_PIN_1          5          // Step
 
-//#define DIR_PIN_2           18          // Direction
-//#define STEP_PIN_2          19          // Step
+#define DRIVER_ADDRESS_2    0b01       // TMC2209 Driver address according to MS1 and MS2
+#define DIR_PIN_2           18          // Direction
+#define STEP_PIN_2          19          // Step
 
 #define R_SENSE_2            0.11f      // E_SENSE for current calc.  
 #define STALL_VALUE_2        2          // [0..255]
 
 FastAccelStepperEngine engine = FastAccelStepperEngine();
 FastAccelStepper *stepper1 = NULL;
+FastAccelStepper *stepper2 = NULL;
 
 TMC2209Stepper driver1(&SERIAL_PORT_2, R_SENSE_2 , DRIVER_ADDRESS_1);
+TMC2209Stepper driver2(&SERIAL_PORT_2, R_SENSE_2 , DRIVER_ADDRESS_2);
 
 void setup() {
   Serial.begin(250000);         // Init serial port and set baudrate
@@ -55,7 +58,6 @@ void setup() {
   //SERIAL_PORT_2.write("Hello");
 
   driver1.begin();
-
   /*
   Research(numbers are chapters of TMC2209 datasheet):
     TOFF is mentioned in:
@@ -109,7 +111,6 @@ void setup() {
   sets the microstepping resolution
   */
   driver1.microsteps(0);
-
   /*
     TODO: research functions
   */
@@ -129,23 +130,60 @@ void setup() {
   Serial.print(driver1.IOIN(), HEX);
   Serial.print(" ");
 
+  driver2.begin();
+  driver2.toff(4);
+  driver2.blank_time(24);
+  driver2.rms_current(500);
+  driver2.microsteps(0);
+  driver2.TCOOLTHRS(0xFFFFF); // 20bit max
+  driver2.semin(0);
+  driver2.semax(2);
+  driver2.shaft(false);
+  driver2.sedn(0b01);
+  driver2.SGTHRS(STALL_VALUE_2);
+  
+  Serial.print(driver2.GCONF(), HEX);
+  Serial.print(" ");
+  Serial.print(driver2.GSTAT(), HEX);
+  Serial.print(" ");
+  Serial.print(driver2.OTP_READ(), HEX);
+  Serial.print(" ");
+  Serial.print(driver2.IOIN(), HEX);
+  Serial.print(" ");
 
   engine.init();
   stepper1 = engine.stepperConnectToPin(STEP_PIN_1);
+  stepper2 = engine.stepperConnectToPin(STEP_PIN_2);
   if (stepper1) {
     stepper1->setDirectionPin(DIR_PIN_1);
     stepper1->setEnablePin(EN_PIN);
     stepper1->setAutoEnable(true);
-
     // If auto enable/disable need delays, just add (one or both):
     // stepper->setDelayToEnable(50);
     // stepper->setDelayToDisable(1000);
 
     stepper1->setSpeedInUs(1250);  // the parameter is us/step !!!
     stepper1->setAcceleration(1000);
-    stepper1->move(8000);
+
+    Serial.println("Stepper1 configuration finished succesfully");
+  }
+  
+  if (stepper2) {
+    stepper2->setDirectionPin(DIR_PIN_1);
+    stepper2->setEnablePin(EN_PIN);
+    stepper2->setAutoEnable(true);
+    // If auto enable/disable need delays, just add (one or both):
+    // stepper->setDelayToEnable(50);
+    // stepper->setDelayToDisable(1000);
+
+    stepper2->setSpeedInUs(1250);  // the parameter is us/step !!!
+    stepper2->setAcceleration(1000);
+
+    Serial.println("Stepper2 configuration finished succesfully");
   }
 
+  stepper1->move(8000);
+  stepper2->move(4000);
   //activate_interrupt();
 }
 
