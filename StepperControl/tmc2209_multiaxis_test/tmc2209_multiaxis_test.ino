@@ -169,14 +169,14 @@ void setup() {
   }
   
   if (stepper2) {
-    stepper2->setDirectionPin(DIR_PIN_1);
+    stepper2->setDirectionPin(DIR_PIN_2);
     stepper2->setEnablePin(EN_PIN);
     stepper2->setAutoEnable(true);
     // If auto enable/disable need delays, just add (one or both):
     // stepper->setDelayToEnable(50);
     // stepper->setDelayToDisable(1000);
 
-    stepper2->setSpeedInUs(1250);  // the parameter is us/step !!!
+    stepper2->setSpeedInUs(2500);  // the parameter is us/step !!!
     stepper2->setAcceleration(1000);
 
     Serial.println("Stepper2 configuration finished succesfully");
@@ -190,12 +190,17 @@ void setup() {
 void loop() {
  static uint32_t last_time=0;
  uint32_t ms = millis();
- if((ms-last_time) > 100) { //run every 0.1s
+ if((ms-last_time) > 1000) { //run every 0.1s
     last_time = ms;
 
     Serial.print("0 ");
     Serial.print(driver1.GCONF(), HEX);
     Serial.print(" ");
     Serial.println(driver1.cs2rms(driver1.cs_actual()), DEC);
+
+    Serial.print("0 ");
+    Serial.print(driver2.GCONF(), HEX);
+    Serial.print(" ");
+    Serial.println(driver2.cs2rms(driver2.cs_actual()), DEC);
   }
 }
