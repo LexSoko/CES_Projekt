@@ -63,6 +63,7 @@ void syncController(bool sendflag = false, int INTERRUPT_PIN_SYNC = 7, int SYNC_
 void setup() {
   Serial.begin(57600);
   // syncController(true);
+  // Serial.println("Rotary Encoder Test:");
 }
 
 
