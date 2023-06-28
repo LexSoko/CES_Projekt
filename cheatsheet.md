@@ -23,6 +23,26 @@ clone the project:
 > git clone https://gitlab.tugraz.at/<your_gitlab_username>/<gitlab_project_name>.git
 ```
 
+## submodule commands
+add a submodule:
+```console
+> git submodule add <Repository HTTPS URL>
+```
+
+initialize submodule configuration files
+```console
+> git submodule init
+```
+
+fetch all the data from submodule project
+```console
+> git submodule update
+```
+
+combine init and update in 1 command
+```console
+> git submodule update --init
+```
 
 # Anaconda3 useage
 make sure you added following paths to your System PATH:

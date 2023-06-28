@@ -10,43 +10,52 @@ when uploading to esp32, hold boot button when text with
 loading points appears in the upload terminal!
 */
 
+/*
+  Problem1:
+  StepperDriver doesn't react to Serial Commands and no meaningfull values can be read out from the driver
 
-#define DIAG_PIN_2         19          // STALL motor 2
-#define EN_PIN_2           18          // Enable
-#define DIR_PIN_2          4          // Direction
-#define STEP_PIN_2         5          // Step
-#define SERIAL_PORT_2      Serial2    // TMC2208/TMC2224 HardwareSerial port
-#define DRIVER_ADDRESS_2   0b00       // TMC2209 Driver address according to MS1 and MS2
-#define R_SENSE_2          0.11f      // E_SENSE for current calc.  
-#define STALL_VALUE_2      2          // [0..255]
+  Possible Causes:
+   -  Driver Serial port not initialized correctly -> test driver.beginSerial line
+   -  TMC driver object not initialized correctly -> test commented line at initialization
+   -  Hardware wiring is faulty -> check signals with oszi
+   -  Driver must be enabled for Serial communication -> Do fastStepper stuff before TMC2209 Driver stuff
+      workaround -> set enable to HIGH manually with 4 commented lines after DIAG Pin initialization
+
+  Testobservations:
+   -  UART Schnittstelle funzt es war TX RX auf ESP32 Seite vertauscht
+*/
+
+
+//#define DIAG_PIN_2          19          // STALL motor 2
+#define EN_PIN              2          // Enable
+#define SERIAL_PORT_2       Serial2    // TMC2208/TMC2224 HardwareSerial port
+#define DRIVER_ADDRESS_1    0b00       // TMC2209 Driver address according to MS1 and MS2
+
+#define DIR_PIN_1           4          // Direction
+#define STEP_PIN_1          5          // Step
+
+//#define DIR_PIN_2           18          // Direction
+//#define STEP_PIN_2          19          // Step
+
+#define R_SENSE_2            0.11f      // E_SENSE for current calc.  
+#define STALL_VALUE_2        2          // [0..255]
 
 FastAccelStepperEngine engine = FastAccelStepperEngine();
-FastAccelStepper *stepper = NULL;
+FastAccelStepper *stepper1 = NULL;
 
-//hw_timer_t * timer1 = NULL;
-TMC2209Stepper driver2(&SERIAL_PORT_2, R_SENSE_2 , DRIVER_ADDRESS_2 );
-
-
-//void IRAM_ATTR onTimer() {
-//
-//  digitalWrite(STEP_PIN_2, !digitalRead(STEP_PIN_2));
-//} 
+TMC2209Stepper driver1(&SERIAL_PORT_2, R_SENSE_2 , DRIVER_ADDRESS_1);
 
 void setup() {
   Serial.begin(250000);         // Init serial port and set baudrate
   while(!Serial);               // Wait for serial port to connect
   Serial.println("\nStart...");
-  SERIAL_PORT_2.begin(115200);
-  
-  pinMode(DIAG_PIN_2 ,INPUT);
-//  pinMode(EN_PIN_2 ,OUTPUT);
-//  pinMode(STEP_PIN_2 ,OUTPUT);
-//  pinMode(DIR_PIN_2 ,OUTPUT);
 
-//  digitalWrite(EN_PIN_2 ,LOW);
-//  digitalWrite(DIR_PIN_2 ,LOW);
+  // init driver serial port
+  SERIAL_PORT_2.begin(9600);
+  //SERIAL_PORT_2.write("Hello");
 
-  driver2.begin();
+  driver1.begin();
+
   /*
   Research(numbers are chapters of TMC2209 datasheet):
     TOFF is mentioned in:
@@ -71,7 +80,7 @@ void setup() {
     used, the value of TOFF controls the slow decay phase time t_off
     of the Chopper-SpreadCycle [7.1].
   */
-  driver2.toff(4);
+  driver1.toff(4);
   /*
   Research(numbers are chapters of TMC2209 datasheet):
     blank time is mentioned in:
@@ -91,47 +100,50 @@ void setup() {
   Conclusion:
     its some timing which for normal applications should be 24
   */
-  driver2.blank_time(24);
-
+  driver1.blank_time(24);
   /*
     sets the RMS current Limit in mA
   */
-  driver2.rms_current(500);
-
+  driver1.rms_current(500);
   /*
   sets the microstepping resolution
   */
-  driver2.microsteps(4);
-  driver2.TCOOLTHRS(0xFFFFF); // 20bit max
-  driver2.semin(0);
-  driver2.semax(2);
-  driver2.shaft(false);
-  driver2.sedn(0b01);
-  driver2.SGTHRS(STALL_VALUE_2);
+  driver1.microsteps(0);
+
+  /*
+    TODO: research functions
+  */
+  driver1.TCOOLTHRS(0xFFFFF); // 20bit max
+  driver1.semin(0);
+  driver1.semax(2);
+  driver1.shaft(false);
+  driver1.sedn(0b01);
+  driver1.SGTHRS(STALL_VALUE_2);
   
-  Serial.print(driver2.GCONF(), HEX);
+  Serial.print(driver1.GCONF(), HEX);
   Serial.print(" ");
-  Serial.print(driver2.GSTAT(), HEX);
+  Serial.print(driver1.GSTAT(), HEX);
   Serial.print(" ");
-  Serial.print(driver2.OTP_READ(), HEX);
+  Serial.print(driver1.OTP_READ(), HEX);
   Serial.print(" ");
-  Serial.print(driver2.IOIN(), HEX);
+  Serial.print(driver1.IOIN(), HEX);
   Serial.print(" ");
 
+
   engine.init();
-  stepper = engine.stepperConnectToPin(STEP_PIN_2);
-  if (stepper) {
-    stepper->setDirectionPin(DIR_PIN_2);
-    stepper->setEnablePin(EN_PIN_2);
-    stepper->setAutoEnable(true);
+  stepper1 = engine.stepperConnectToPin(STEP_PIN_1);
+  if (stepper1) {
+    stepper1->setDirectionPin(DIR_PIN_1);
+    stepper1->setEnablePin(EN_PIN);
+    stepper1->setAutoEnable(true);
 
     // If auto enable/disable need delays, just add (one or both):
     // stepper->setDelayToEnable(50);
     // stepper->setDelayToDisable(1000);
 
-    stepper->setSpeedInUs(10000);  // the parameter is us/step !!!
-    stepper->setAcceleration(1000);
-    stepper->move(800);
+    stepper1->setSpeedInUs(1250);  // the parameter is us/step !!!
+    stepper1->setAcceleration(1000);
+    stepper1->move(8000);
   }
 
   //activate_interrupt();
@@ -143,21 +155,9 @@ void loop() {
  if((ms-last_time) > 100) { //run every 0.1s
     last_time = ms;
 
-    //Serial.print("0 ");
-    //Serial.print(driver2.GCONF(), HEX);
-    //Serial.print(" ");
-    //Serial.println(driver2.cs2rms(driver2.cs_actual()), DEC);
+    Serial.print("0 ");
+    Serial.print(driver1.GCONF(), HEX);
+    Serial.print(" ");
+    Serial.println(driver1.cs2rms(driver1.cs_actual()), DEC);
   }
 }
-
-//void activate_interrupt(){
-//  {
-//    cli();//stop interrupts
-//    timer1 = timerBegin(3, 8,true); // Initialize timer 4. Se configura el timer,  ESP(0,1,2,3)
-//                                 // prescaler of 8, y true es una bandera que indica si la interrupcion se realiza en borde o en nivel
-//    timerAttachInterrupt(timer1, &onTimer, true); //link interrupt with function onTimer
-//    timerAlarmWrite(timer1, 8000, true); //En esta funcion se define el valor del contador en el cual se genera la interrupción del timer
-//    timerAlarmEnable(timer1);    //Enable timer        
-//    sei();//allow interrupts
-//  }
-//}
