@@ -48,7 +48,7 @@ import os
 path = os.getcwd()
 
 # documentation stuff
-"""
+
 Limitation Problem1:
  -  Limitation source:
     Craptop (Max)
@@ -71,7 +71,7 @@ Bug2:
  -  Solution:
     reset arduino from python side
     following code
-"""
+
  -  Solution:
     reset arduino from python side
     following code
@@ -394,9 +394,9 @@ loadcell_timeVal_ls = []
 i = 0
 
 
-while i<300:
-rot_pos = 0
-databyt = bytes()
+#while i<300:
+#rot_pos = 0
+#databyt = bytes()
 #debug_flag = False
 loadcell_raw_ls= []
 loadcell_converted_ls = []
@@ -504,14 +504,14 @@ if plot ==True:
 
 # Oachkatzlscjowaf 082
 
-        else:
-            loadcell_raw_ls.append(loadcell_raw)
-            loadcell_timeVal_ls.append(loadcell_timeVal)
-            if ((i%100)==0):
-                print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:",  ''.join(format(x, '02x') for x in val3),"i",i)
-            print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:",  ''.join(format(x, '02x') for x in val3),"i",i)
-            
-            i = loadcell_timeVal/1e6 
+#else:
+#    loadcell_raw_ls.append(loadcell_raw)
+#    loadcell_timeVal_ls.append(loadcell_timeVal)
+#    if ((i%100)==0):
+#        print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:",  ''.join(format(x, '02x') for x in val3),"i",i)
+#    print("raw data loadcell:",loadcell_raw,"time_val micros:", loadcell_timeVal, "bytestring:",  ''.join(format(x, '02x') for x in val3),"i",i)
+#    
+#    i = loadcell_timeVal/1e6 
        
 #saving the converted data into csv       
 for r in loadcell_raw_ls:
