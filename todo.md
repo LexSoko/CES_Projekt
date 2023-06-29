@@ -6,10 +6,10 @@
 ### Winder ohne Spannsystem:
 - [ ] Martin muss 1 Teil neu drucken (martin)
 
-- [ ] Linearantrieb fertig bis auf da eine teil und die 
-- [ ] Wellenkupplung (Martin)
+- [x] Linearantrieb fertig bis auf da eine teil und die 
+- [x] Wellenkupplung (Martin)
 
-- [ ] Hauptachse fehlt noch die festlagerhalterung (Martin)
+- [x] Hauptachse fehlt noch die festlagerhalterung (Martin)
 - [ ] Spulenhalter fehlt noch (nicht druckbar, muss abgedreht werden) (Martin)
 - [ ] Platte gehört noch gefräst (martin und aleksey)
 
@@ -28,13 +28,13 @@
 
 ### Tisch:
 - [ ] Macht martin mit dorn
-- [ ] Teflon (Martin)
-- [ ] Drehgeber drauf mit Vnut Aufsatz (Martin)
+- [x] Teflon (Martin)
+- [x] Drehgeber drauf mit Vnut Aufsatz (Martin)
 
 ### Allgemein Mechanik:
 - [x] Schraubenliste (Martin und Aleksey)
 - [ ] Wir brauchen Kupferlackdraht zum wickeln Notlösung (Max)
-- [ ] Schleppkette für rotary encoder (Martin)
+- [x] Schleppkette für rotary encoder (Martin)
 
 ### Elektronik:
 - [ ] Standoffs für arduinos und so (Martin)
