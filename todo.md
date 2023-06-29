@@ -17,14 +17,14 @@
 - [ ] Platte fräsen und dann schauen ob abstände passen (platte fräst martin und aleksey)
 - [ ] (abstände misst aleksey heute)
 - [ ] Filz besorgen (macht aleksey)
-- [ ] Kugellagerhalterung überarbeiten (aleksey)
-- [ ] Abstandshalter für kugellagerhalter (aleksey
-- [ ] Abstandhalter für Arm noch machen (aleksey)
-- [ ] Gewindestange oder stift für Abstandshalter (aleksey)
-- [ ] Die eine Kugellagerhalterung mit erhebungen (aleksey)
+- [x] Kugellagerhalterung überarbeiten (aleksey)
+- [x] Abstandshalter für kugellagerhalter (aleksey
+- [x] ] Abstandhalter für Arm noch machen (aleksey)
+- [x] Gewindestange oder stift für Abstandshalter (aleksey)
+- [x] Die eine Kugellagerhalterung mit erhebungen (aleksey)
 - [ ] Statt umlenkrolle direkt Abrollmotor NEMA17 (aleksey)
 - [ ] Feder besorgen muss sehr schwach sein notlösung gummiringerl(sleksey)
-- [ ] Wägezellen spacer (aleksey)
+- [x] Wägezellen spacer (aleksey)
 
 ### Tisch:
 - [ ] Macht martin mit dorn
@@ -32,7 +32,7 @@
 - [ ] Drehgeber drauf mit Vnut Aufsatz (Martin)
 
 ### Allgemein Mechanik:
-- [ ] Schraubenliste (Martin und Aleksey
+- [x] Schraubenliste (Martin und Aleksey)
 - [ ] Wir brauchen Kupferlackdraht zum wickeln Notlösung (Max)
 - [ ] Schleppkette für rotary encoder (Martin)
 

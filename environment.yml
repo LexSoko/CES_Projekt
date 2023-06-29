@@ -15,5 +15,8 @@ dependencies:
   - scipy
   - pyserial
   - pandas
+  - pysimplegui
   - pip:
     - telemetrix
+    - customtkinter
+    - tk
