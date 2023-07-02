@@ -32,3 +32,22 @@ if doit == True:
 
                 i = loadcell_timeVal/1e6 
        
+
+       
+for r in loadcell_raw_ls:
+    loadcell_converted_ls.append((r - arduino.offset)*arduino.calibration_factor)
+save_data = False
+if save_data == True:
+    loadcell_csv = pd.DataFrame([loadcell_timeVal_ls,loadcell_converted_ls]).T
+    loadcell_csv.to_csv(path + "\\Rotary Encoder\\loadcell_csv_data\\resolution_test_300s.csv", sep= ";")
+
+
+plot = False
+if plot ==True:    
+    plt.scatter(np.array(loadcell_timeVal_ls)/1e6,loadcell_raw_ls)
+
+    plt.show()
+    plt.cla()
+    plt.plot(np.array(loadcell_timeVal_ls)/1e6,loadcell_converted_ls, "b-",label= f"calibration_factor={arduino.calibration_factor},offset={arduino.offset}" )
+    plt.legend(loc="best")
+    plt.show()
