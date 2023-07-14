@@ -4,8 +4,10 @@
 /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 /*                    Global Variables                              */
 /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
-#define DATA_PIN_A 2
-#define DATA_PIN_B 3
+#define DATA_PIN_A 3
+#define DATA_PIN_B 2
+
+Encoder rotaryEncoder(DATA_PIN_A, DATA_PIN_B);
 
 volatile bool syncState = false;
 volatile unsigned long syncTime;
@@ -13,8 +15,9 @@ volatile unsigned long syncTime;
 long oldPosition = -999;
 long newPosition = 0;
 unsigned long time = 0;
+int i = 0;
 
-Encoder rotaryEncoder(DATA_PIN_A, DATA_PIN_B);
+
 
 
 /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
@@ -23,7 +26,6 @@ Encoder rotaryEncoder(DATA_PIN_A, DATA_PIN_B);
 void syncISR() {
   syncTime = micros();  // ist so 128 microsekunden schneller als wenn nach der ISR
   syncState = true;
-
 }
 
 /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
@@ -39,7 +41,7 @@ void syncController(bool sendflag = false, int INTERRUPT_PIN_SYNC = 7, int SYNC_
   }
 
   pinMode(INTERRUPT_PIN_SYNC, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN_SYNC), syncISR, LOW);
+  attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN_SYNC), syncISR, FALLING);
 
   while (syncState == false){
     if(sendflag == true){
@@ -52,7 +54,7 @@ void syncController(bool sendflag = false, int INTERRUPT_PIN_SYNC = 7, int SYNC_
   // Serial.write((byte*)&syncTime, sizeof(syncTime));
   // Serial.println();
 
-  delay(100);
+  delay(1000);
 }
 
 
@@ -61,15 +63,13 @@ void syncController(bool sendflag = false, int INTERRUPT_PIN_SYNC = 7, int SYNC_
 /*                    Setup                                         */
 /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 void setup() {
-  Serial.begin(57600);
-  // syncController(true);
+  Serial.begin(9600);
+  syncController(true);
 }
 
 
 // Loop
 void loop() {
-
-
 
   newPosition = rotaryEncoder.read();
   time = micros();
@@ -77,6 +77,8 @@ void loop() {
   // Serial.write((byte*)&newPosition, sizeof(newPosition));
 
   // Serial.write((byte*)&time, sizeof(time));
-  Serial.println(newPosition);
+  // Serial.println(i);
+  Serial.print(newPosition);
   Serial.println();
+  // i = i +1;
 }
