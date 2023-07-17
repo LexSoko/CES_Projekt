@@ -2,8 +2,31 @@ import pandas as pd
 import numpy as np 
 import matplotlib.pyplot as plt
 import os 
+import tkinter as tk
 
 path = os.getcwd()
+
+window_coilwinder = tk.Tk()
+window_coilwinder.title("Coilwinder Serial Monitor")
+window_coilwinder.mainloop()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 matplot = False
 if matplot == True:    
     data = pd.read_csv(path + "\\Rotary Encoder\\loadcell_csv_data\\resolution_test_300s.csv",delimiter=";")

@@ -13,7 +13,7 @@ long loadcell_read; //value send to python in the work loop
 char commandbuffer[256]; 
 
 byte controll_byte;
-byte  exit = 0x00;
+byte exitFlag = 0xF0;
 unsigned long previous_time = 0;
 const unsigned long wait_time = 5000;
 
@@ -44,15 +44,15 @@ void loop() {
   
 // Work function is initiated using the first bit of the read byte (1000 0000)
   if (controll_byte == 0x80) {
-    //as long the exit command is not read the work loop continiuos
-    while (exit != 0xF0) {
+    //as long the exitFlag command is not read the work loop continiuos
+    while (exitFlag != 0xF0) {
       work(); 
       // checks every five seconds if data is in buffer
       if (time_now - previous_time >= wait_time) {
-        if (Serial.available())> 0{
-          // sets exit to incoming byte
-          // only if exit is 1111 0000 the loop will be left
-          exit = Serial.read();
+        if (Serial.available()){
+          // sets exitFlag to incoming byte
+          // only if exitFlag is 1111 0000 the loop will be left
+          exitFlag = Serial.read();
         }
       }
     }
@@ -77,34 +77,34 @@ void work() {
     
 }
 void syncInterrupt(){
-  time_now = micros()
-  exit = 0xF0;
+  time_now = micros();
+  exitFlag = 0xF0;
 }
 void sync() {
-  exit = 0x00;
-  while(exit != 0xF0){
+  exitFlag = 0x00;
+  while(exitFlag != 0xF0){
     //just waits for interrupt
   }
 }
 void calibration() {
   // stays in loop as long the commands are not given
-  exit = 0x00;
-  while (exit != 0xF0) {
+  exitFlag = 0x00;
+  while (exitFlag != 0xF0) {
     //only triggers if tare command is given 0000 1010
-    if (Serial.read == 0x0A){
+    if (Serial.read() == 0x0A){
       // measuring the offset
       raw_offset = loadcell.read_average(50);
-      exit = 0xF0;
+      exitFlag = 0xF0;
     }
   }
 
-  exit = 0x00;
-  while (exit != 0xF0) {
+  exitFlag = 0x00;
+  while (exitFlag != 0xF0) {
      //only triggers if calibration raw value command is given 0000 1011
-    if (Serial.read == 0x0B){
+    if (Serial.read() == 0x0B){
       //measuring the raw value after the calibration weight is placed
       raw_calibration = loadcell.read_average(50);
-      exit = 0xF0;
+      exitFlag = 0xF0;
     }
   }
   //when both values are read the arduino sends them as 10 byte strings

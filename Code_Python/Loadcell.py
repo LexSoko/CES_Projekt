@@ -1,6 +1,13 @@
 import data_acquisition as daq
-
-
+import pandas as pd 
+import os 
+import matplotlib.pyplot as plt
+import tkinter 
+#returns current directory
+path = os.getcwd()
+loadcell_raw_ls = []
+loadcell_timeVal_ls = []
+loadcell_converted_ls = []
 doit = False
 if doit == True:
     arduino = daq.serial_mma_data_stream("COM9", 57600,16384,177)
@@ -34,6 +41,12 @@ if doit == True:
        
 
        
+
+
+
+
+
+
 for r in loadcell_raw_ls:
     loadcell_converted_ls.append((r - arduino.offset)*arduino.calibration_factor)
 save_data = False
