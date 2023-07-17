@@ -16,6 +16,7 @@
 
 // FAS calculation stuff
 #define MAX_TICKS 65535
+#define MAX_STEPS 255
 
 
 // fastaccelstepper objects
@@ -27,7 +28,11 @@ FastAccelStepper *stepper1 = NULL;
 TMC2209Stepper driver1(&STEPPER_SERIAL, R_SENSE , DRIVER_ADDRESS_1);
 //TMC2209Stepper driver2(&STEPPER_SERIAL, R_SENSE , DRIVER_ADDRESS_2);
 
+/*
+  Adds a Stepper command to the FAS queue and waits until the queue has place
+*/
 void addCmd1(uint16_t ticks, uint8_t steps,bool dir) {
+  //TODO: add idle when the queue is full
   struct stepper_command_s cmd = {
         .ticks = ticks, .steps = steps, .count_up = dir};
   while (true) {
@@ -37,6 +42,50 @@ void addCmd1(uint16_t ticks, uint8_t steps,bool dir) {
     }
     // adding a delay(1) causes problems
     delayMicroseconds(1000);
+  }
+}
+
+/*
+  Adds a Stepper Block with constant speed to the FAS library queue
+  This function has to generate multiple Stepper Commands for one Block if
+  the Block includes more then 255 Steps (bc library takes steps as uint8_t)
+  and if the block has more than 65535 ticks per Step (bc lib takes ticks as uint16_t)
+*/
+void addBlock1(uint32_t ticks, uint32_t steps, bool dir){
+  //TODO: Test this function extensively
+  //TODO: check if a command can handle more than MAX_TICKS/2
+
+  uint32_t myTicks = ticks;
+  uint32_t mySteps = steps;
+
+  if(myTicks <= MAX_TICKS){
+
+    while(mySteps > MAX_STEPS){
+      addCmd1((uint16_t)ticks, (uint8_t)MAX_STEPS,dir);
+      mySteps -= MAX_STEPS;
+    }
+
+    if(mySteps >0){
+      addCmd1((uint16_t)ticks, (uint8_t)mySteps,dir);
+    }
+
+  } else {
+    while(mySteps > 0){
+
+      addCmd1((uint16_t)(MAX_TICKS/2),(uint8_t)1,dir);
+      myTicks -= (MAX_TICKS/2);
+      mySteps -= 1;
+
+      while(myTicks > MAX_TICKS){
+        addCmd1((uint16_t)(MAX_TICKS/2), (uint8_t)0,dir);
+        myTicks -= (MAX_TICKS/2);
+      }
+
+      if(myTicks >0){
+        addCmd1((uint16_t)myTicks, (uint8_t)0,dir);
+      }
+
+    }
   }
 }
 
@@ -110,6 +159,8 @@ void loop() {
 
     addCmd1(curr_ticks, steps, direction);
 
+    // this part is for the waiting commands, when speed is to low for library
+    // this adds waiting commands with Length MAX_TICKS/2 until step time for current speed is reached
     while (ticks > 0) {
       uint16_t curr_ticks;
       if (ticks > MAX_TICKS) {
