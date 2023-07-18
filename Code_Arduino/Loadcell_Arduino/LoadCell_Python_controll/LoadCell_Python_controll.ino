@@ -6,12 +6,12 @@
 #define SYNC_PIN 7
 
 // serial command types
-#define WORK_COMMAND 119
-#define CALIBRATION_COMMAND 99
-#define SYNC_COMMAND 115
-byte exitFlag = 0;
+#define WORK_COMMAND 0x80
+#define CALIBRATION_COMMAND 0xC0
+#define SYNC_COMMAND 0xE0
 #define TARE_COMMAND  116
 #define RAW_CALL_COMMAND 114
+
 // exit flag definitions
 
 #define EF_SYNC
@@ -23,7 +23,7 @@ long loadcell_read; //value send to python in the work loop
 
 
 byte controll_byte;
-
+byte exitFlag = 0xF0;
 unsigned long previous_time = 0;
 const unsigned long wait_time = 5000;
 
@@ -40,7 +40,6 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  Serial.flush();
   if (Serial.available()) {
     controll_byte = Serial.read();
     //controll_byte = strtol(controll_byte, NULL, 16);
@@ -53,9 +52,9 @@ void loop() {
   {
   case WORK_COMMAND:
     //as long the exitFlag command is not read the work loop continiuos
-    exitFlag = 0;
+    exitFlag = 0x00;
     //Serial.println("work commandbyte read");
-    while (exitFlag != 101) {
+    while (exitFlag != 0xF0) {
       //Serial.println("workloop");
       work(); 
       if (Serial.available()){
@@ -65,26 +64,26 @@ void loop() {
           //Serial.println("exit commandbyte read");
       }
       // checks every five seconds if data is in buffer
-      //if (time_now - previous_time >= wait_time) {
-      //  if (Serial.available()){
-      //    // sets exitFlag to incoming byte
-      //    // only if exitFlag is 1111 0000 the loop will be left
-      //    exitFlag = Serial.read();
-      //    Serial.println("exit commandbyte read");
-      //  }
-      //}
+      if (time_now - previous_time >= wait_time) {
+        if (Serial.available()){
+          // sets exitFlag to incoming byte
+          // only if exitFlag is 1111 0000 the loop will be left
+          exitFlag = Serial.read();
+          //Serial.println("exit commandbyte read");
+        }
+      }
     }
-    controll_byte=0x00;
+    controll_byte = 0x00;
     break;
   case CALIBRATION_COMMAND:
     // controll sequence is initiated using 1100 0000
     calibration();
-    controll_byte=0x00;
+    controll_byte = 0x00;
     break;
   case SYNC_COMMAND:
     //sync sequence is initiated using 1110 0000
     sync();
-    controll_byte=0x00;
+    controll_byte = 0x00;
     break;
   }
 
@@ -103,19 +102,13 @@ void work() {
 }
 void syncInterrupt(){
   time_now = micros();
-  exitFlag = 101;
+  exitFlag = 0xF0;
 }
 void sync() {
-  exitFlag = 0;
+  exitFlag = 0x00;
   //Serial.println("syncfunction initiated");
-  while(exitFlag != 101){
+  while(exitFlag != 0xF0){
     //Serial.println("syncloop");
-    if (Serial.available()){
-          // sets exitFlag to incoming byte
-          // only if exitFlag is 1111 0000 the loop will be left
-          exitFlag = Serial.read();
-          //Serial.println("exit commandbyte read");
-    }
     //just waits for interrupt
   }
   Serial.write((byte*) &time_now, sizeof(time_now));
@@ -123,36 +116,34 @@ void sync() {
 }
 void calibration() {
   // stays in loop as long the commands are not given
-  exitFlag = 0;
-  //Serial.println("calibration function initiated");
-  while (exitFlag != 101) {
+  exitFlag = 0x00;
+  Serial.println("calibration function initiated");
+  while (exitFlag != 0xF0) {
     //Serial.println("tareloop");
     //only triggers if tare command is given 0000 1010
     if (Serial.read() == TARE_COMMAND){
       //Serial.println("raw tare commandbyte read");
       // measuring the offset
       raw_offset = loadcell.read_average(50);
-      exitFlag = 101;
+      exitFlag = 0xF0;
     }
   }
 
-  exitFlag = 0;
-  while (exitFlag != 101) {
+  exitFlag = 0x00;
+  while (exitFlag != 0xF0) {
     //Serial.println("raw cal value loop");
      //only triggers if calibration raw value command is given 0000 1011
-    if (Serial.read() == RAW_CALL_COMMAND){
+    if (Serial.read() == RAW_CALL_COMMAND ){
       //Serial.println("raw cal commandbyte read");
       //measuring the raw value after the calibration weight is placed
       raw_calibration = loadcell.read_average(50);
-      exitFlag = 101;
+      exitFlag = 0xF0;
     }
   }
-  
   //Serial.println("sending calibration values");
   //when both values are read the arduino sends them as 10 byte strings
   raw_offset = raw_offset | 0x80000000;
   Serial.write((byte*) &raw_offset, sizeof(raw_offset));
   Serial.write((byte*) &raw_calibration, sizeof(raw_calibration));
   Serial.println();
-  
 }
