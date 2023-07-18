@@ -16,79 +16,174 @@
 
 // FAS calculation stuff
 #define MAX_TICKS 65535
+#define HALF_MAX_TICKS 32768
 #define MAX_STEPS 255
 
 
 // fastaccelstepper objects
 FastAccelStepperEngine engine = FastAccelStepperEngine();
 FastAccelStepper *stepper1 = NULL;
-//FastAccelStepper *stepper2 = NULL;
+FastAccelStepper *stepper2 = NULL;
 
 //TMC driver objects
 TMC2209Stepper driver1(&STEPPER_SERIAL, R_SENSE , DRIVER_ADDRESS_1);
-//TMC2209Stepper driver2(&STEPPER_SERIAL, R_SENSE , DRIVER_ADDRESS_2);
+TMC2209Stepper driver2(&STEPPER_SERIAL, R_SENSE , DRIVER_ADDRESS_2);
 
 /*
   Adds a Stepper command to the FAS queue and waits until the queue has place
+  returns true if command was command was enqueued succesfully
 */
-void addCmd1(uint16_t ticks, uint8_t steps,bool dir) {
+bool addCmd1(uint16_t ticks, uint8_t steps,bool dir) {
   //TODO: add idle when the queue is full
   struct stepper_command_s cmd = {
         .ticks = ticks, .steps = steps, .count_up = dir};
   while (true) {
     int rc = stepper1->addQueueEntry(&cmd);
     if (rc == AQE_OK) {
-      break;
+      return true;
     }
     // adding a delay(1) causes problems
     delayMicroseconds(1000);
   }
+  return false;
 }
 
 /*
-  Adds a Stepper Block with constant speed to the FAS library queue
-  This function has to generate multiple Stepper Commands for one Block if
-  the Block includes more then 255 Steps (bc library takes steps as uint8_t)
-  and if the block has more than 65535 ticks per Step (bc lib takes ticks as uint16_t)
+  Adds a Stepper command to the FAS queue and waits until the queue has place
 */
-void addBlock1(uint32_t ticks, uint32_t steps, bool dir){
-  //TODO: Test this function extensively
-  //TODO: check if a command can handle more than MAX_TICKS/2
-
-  uint32_t myTicks = ticks;
-  uint32_t mySteps = steps;
-
-  if(myTicks <= MAX_TICKS){
-
-    while(mySteps > MAX_STEPS){
-      addCmd1((uint16_t)ticks, (uint8_t)MAX_STEPS,dir);
-      mySteps -= MAX_STEPS;
+bool addCmd2(uint16_t ticks, uint8_t steps,bool dir) {
+  //TODO: add idle when the queue is full
+  struct stepper_command_s cmd = {
+        .ticks = ticks, .steps = steps, .count_up = dir};
+  while (true) {
+    int rc = stepper2->addQueueEntry(&cmd);
+    if (rc == AQE_OK) {
+      return true;
     }
-
-    if(mySteps >0){
-      addCmd1((uint16_t)ticks, (uint8_t)mySteps,dir);
-    }
-
-  } else {
-    while(mySteps > 0){
-
-      addCmd1((uint16_t)(MAX_TICKS/2),(uint8_t)1,dir);
-      myTicks -= (MAX_TICKS/2);
-      mySteps -= 1;
-
-      while(myTicks > MAX_TICKS){
-        addCmd1((uint16_t)(MAX_TICKS/2), (uint8_t)0,dir);
-        myTicks -= (MAX_TICKS/2);
-      }
-
-      if(myTicks >0){
-        addCmd1((uint16_t)myTicks, (uint8_t)0,dir);
-      }
-
-    }
+    // adding a delay(1) causes problems
+    delayMicroseconds(1000);
   }
+  return false;
 }
 
+void idle(){
+  //do fast checks
+}
+
+void addBlock(uint32_t ticks1, uint32_t steps1, bool dir1, uint32_t ticks2, uint32_t steps2, bool dir2){
+  uint32_t  myTicks1 = ticks1,
+            mySteps1 = steps1;
+  bool      cmdsToEnqueue1 = (steps1 != 0),
+            tickStepActive1 = false;
+
+  uint32_t  myTicks2 = ticks2,
+            mySteps2 = steps2;
+  bool      cmdsToEnqueue2 = (steps2 != 0),
+            tickStepActive2 = false;
+  
+  do{
+    idle();
+
+    // try to enqueue a command for stepper 1
+    if(cmdsToEnqueue1 && !stepper1->isQueueFull()){
+      if(ticks1 <= MAX_TICKS){
+        // ticks are legal for stepper queue
+        // only steps have to be seperated if there are too many
+        if(mySteps1 <= MAX_STEPS){
+          // no step seperation needed 
+          if(addCmd1((uint16_t)ticks1,(uint8_t)mySteps1,dir1)){
+            mySteps1 = 0;
+          }
+        } else {
+          // step seperation needed
+          if(addCmd1((uint16_t)ticks1,(uint8_t)MAX_STEPS,dir1)){
+            mySteps1 -= MAX_STEPS;
+          }
+        }
+
+      } else {
+        // to many ticks -> multiple cmds needed for 1 step
+        if(!tickStepActive1){
+          // first cmd for step
+          myTicks1 = ticks1;
+          if(addCmd1((uint16_t) HALF_MAX_TICKS, (uint8_t)1, dir1)){
+            tickStepActive1 = true;
+            myTicks1 -= HALF_MAX_TICKS;
+            mySteps1 --;
+          }
+        } else if(myTicks1 > MAX_TICKS) {
+          // intermediate wait commands for step
+          if(addCmd1((uint16_t) HALF_MAX_TICKS, (uint8_t)0, dir1)){
+            tickStepActive1 = true;
+            myTicks1 -= HALF_MAX_TICKS;
+          }
+        } else {
+          // last wait command for step
+          if(addCmd1((uint16_t) myTicks1, (uint8_t)0, dir1)){
+            tickStepActive1 = false;
+            myTicks1 = 0;
+          }
+        }
+      }
+
+      if((mySteps1 == 0) && !tickStepActive1){
+        // block enqueuement is finished for stepper 1
+        cmdsToEnqueue1 = false;
+      }
+    } // stepper 1 cmd enqueuement attempt finished
+
+
+    // try to enqueue a command for stepper 2
+    if(cmdsToEnqueue2 && !stepper2->isQueueFull()){
+      if(ticks2 <= MAX_TICKS){
+        // ticks are legal for stepper queue
+        // only steps have to be seperated if there are too many
+        if(mySteps2 <= MAX_STEPS){
+          // no step seperation needed 
+          if(addCmd2((uint16_t)ticks2,(uint8_t)mySteps2,dir2)){
+            mySteps2 = 0;
+          }
+        } else {
+          // step seperation needed
+          if(addCmd2((uint16_t)ticks2,(uint8_t)MAX_STEPS,dir2)){
+            mySteps2 -= MAX_STEPS;
+          }
+        }
+
+      } else {
+        // to many ticks -> multiple cmds needed for 1 step
+        if(!tickStepActive2){
+          // first cmd for step
+          myTicks2 = ticks2;
+          if(addCmd2((uint16_t) HALF_MAX_TICKS, (uint8_t)1, dir2)){
+            tickStepActive2 = true;
+            myTicks2 -= HALF_MAX_TICKS;
+            mySteps2 --;
+          }
+        } else if(myTicks2 > MAX_TICKS) {
+          // intermediate wait commands for step
+          if(addCmd2((uint16_t) HALF_MAX_TICKS, (uint8_t)0, dir2)){
+            tickStepActive2 = true;
+            myTicks2 -= HALF_MAX_TICKS;
+          }
+        } else {
+          // last wait command for step
+          if(addCmd2((uint16_t) myTicks2, (uint8_t)0, dir2)){
+            tickStepActive2 = false;
+            myTicks2 = 0;
+          }
+        }
+      }
+
+      if((mySteps2 == 0) && !tickStepActive2){
+        // block enqueuement is finished for stepper 2
+        cmdsToEnqueue2 = false;
+      }
+    } // stepper 2 cmd enqueuement attempt finished
+
+  }while(cmdsToEnqueue1 || cmdsToEnqueue2);
+
+}
 
 void setup() {
   // PC connection
@@ -103,22 +198,22 @@ void setup() {
   driver1.begin();
   driver1.toff(4);
   driver1.rms_current(500);
-  driver1.microsteps(64);
+  driver1.microsteps(0);
   driver1.en_spreadCycle(false);
   driver1.pwm_autoscale(true);
 
-    // Stepper 1 Driver settings
-  //driver2.begin();
-  //driver2.toff(4);
-  //driver2.rms_current(500);
-  //driver2.microsteps(0);
-  //driver2.en_spreadCycle(false);
-  //driver2.pwm_autoscale(true);
+  // Stepper 1 Driver settings
+  driver2.begin();
+  driver2.toff(4);
+  driver2.rms_current(500);
+  driver2.microsteps(0);
+  driver2.en_spreadCycle(false);
+  driver2.pwm_autoscale(true);
 
   // fastaccelstepper stuff
   engine.init();
   stepper1 = engine.stepperConnectToPin(STEP_PIN_1);
-  //stepper2 = engine.stepperConnectToPin(STEP_PIN_2);
+  stepper2 = engine.stepperConnectToPin(STEP_PIN_2);
 
   if (stepper1) {
     stepper1->setDirectionPin(DIR_PIN_1);
@@ -126,12 +221,12 @@ void setup() {
     stepper1->setAutoEnable(true);
     Serial.println("Stepper1 configuration finished succesfully");
   }
-  //if (stepper2) {
-  //  stepper2->setDirectionPin(DIR_PIN_2);
-  //  stepper2->setEnablePin(EN_PIN);
-  //  stepper2->setAutoEnable(true);
-  //  Serial.println("Stepper2 configuration finished succesfully");
-  //}
+  if (stepper2) {
+    stepper2->setDirectionPin(DIR_PIN_2);
+    stepper2->setEnablePin(EN_PIN);
+    stepper2->setAutoEnable(true);
+    Serial.println("Stepper2 configuration finished succesfully");
+  }
 }
 
 
@@ -145,40 +240,22 @@ void loop() {
     // Ticks at start/end: 10ms
     // @step = STEPS/2: it is 10ms/STEPS for STEPS=500 => 20us
     uint32_t k = max(seg, SEGMENTS - seg);
-    uint32_t ticks = TICKS_PER_S / 100 / (SEGMENTS - k);
-    uint16_t curr_ticks;
-    uint8_t steps;
-    if (ticks > MAX_TICKS) {
-      curr_ticks = 32768;
-      steps = 1;
-    } else {
-      steps = MAX_TICKS / ticks;
-      curr_ticks = ticks;
-    }
-    ticks -= curr_ticks;
+    uint32_t ticks = TICKS_PER_S / 2 / (SEGMENTS - k);
 
-    addCmd1(curr_ticks, steps, direction);
+    uint32_t steps = MAX_TICKS / ticks;
+    if(steps == 0) steps = 1;
+    addBlock(ticks,steps*2,direction,ticks*2,steps,!direction);
 
-    // this part is for the waiting commands, when speed is to low for library
-    // this adds waiting commands with Length MAX_TICKS/2 until step time for current speed is reached
-    while (ticks > 0) {
-      uint16_t curr_ticks;
-      if (ticks > MAX_TICKS) {
-        curr_ticks = 32768;
-      } else {
-        curr_ticks = ticks;
-      }
-      ticks -= curr_ticks;
-      addCmd1(curr_ticks, 0, direction);
-    }
+    //addBlock1(ticks/2,steps,direction);
+    //addBlock2(ticks,steps,!direction);
   }
 
   Serial.println("no more commands to be created");
-  while (!stepper1->isQueueEmpty()) {
+  while ((!stepper1->isQueueEmpty()) && (!stepper2->isQueueEmpty())) {
   }
   Serial.println("queue is empty");
 
-  while (stepper1->isRunning()) {
+  while ((stepper1->isRunning()) && (stepper2->isRunning())) {
   }
 
   Serial.println("stepper has stopped");
