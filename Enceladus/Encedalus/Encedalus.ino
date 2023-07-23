@@ -55,28 +55,53 @@
 #define DISP_D6 8
 #define DISP_D7 9
 
-#define JOYSTICKVERSION true
-#define DISPLAYVERSION true
+#define JOYSTICKVERSION false
+#define DISPLAYVERSION false
 
 //#define MY_IDENTITY "MotorControl_KLD4"
 //#define MY_IDENTITY "Monochromator1"
 //#define MY_IDENTITY "Monochromator2"
 //#define MY_IDENTITY "Filterwheel_2v0"
-#define MY_IDENTITY "Enceladus_2v0_UC2"
+//#define MY_IDENTITY "Enceladus_2v0_UC2"
+
+#define MY_IDENTITY "FrankensteinsGemueseGarten_0v0"
 
 //#define MY_IDENTITY "BottomObjectiveMotor"
 
 // I/O DEFINITIONS for the Joystick
 int ACD_X_PIN = A6;
 int ACD_Y_PIN = A7;
-#define JOYSTICK_BUTTON 13
-#define MOTOR_POSITION 2
-#define WORM_POSITION 3
+#define JOYSTICK_BUTTON 14 // placeholder pins where nothing is connected
+#define MOTOR_POSITION 15  // ->^
+#define WORM_POSITION 16   // ->|
 
-// I/O DEFINITONS for the Motor
-#define MOTOR_ENABLE 10
-#define MOTOR_DIRECTION 11
-#define MOTOR_STEP 12
+// I/O DEFINITONS for the Motors
+
+#define SECOND_AXIS
+#define MOTOR_ENABLE 11
+
+
+
+
+//#define MOTOR_DIRECTION1 9  //only active one
+//#define MOTOR_STEP1 10
+//
+//#define MOTOR_DIRECTION2 12
+//#define MOTOR_STEP2 13
+
+
+
+#define MOTOR_DIRECTION1 12  //only active one
+#define MOTOR_STEP1 13
+
+#define MOTOR_DIRECTION2 9
+#define MOTOR_STEP2 10
+
+
+
+const char K_xy = 15;
+int K_xy_count = 0;
+int second_axis_dir = 0; // 0 is forward and 1 is backward
 
 
 // Create a Display
@@ -109,7 +134,7 @@ int Timer1DelayRegisterPreloadValue = 65000;              //
 
 /////////////////////////////////////////// Positioning Variables ///////////////////////////////////////
 int MotorDirection = 0;               // Motordirection = 0 --> Motor to the Left (CCW), Motordirection = 1 --> Motor to the right (clockwise)
-int MaxMotorSpeed = 375;                 // Motorspeed can be between 0 and 1000 --> setting the timer value
+int MaxMotorSpeed = 200;                 // Motorspeed can be between 0 and 1000 --> setting the timer value
 
 long TargetPosition=0;                // Always Absolute
 long CurrentPosition=0;               // set to 0 by home!
@@ -126,7 +151,7 @@ long Delta = 0;
 
 int AccelerationCounter = 0;
 int ActualMotorSpeed = 0;
-int Acceleration = 10;                // Middle by default
+int Acceleration = 1;                // Middle by default
 int CruiseBackSpeed = 150;             // Default very slow
 
 unsigned long StopWatch_BeginTime = 0;
@@ -359,11 +384,17 @@ void setup() {
   pinMode(DISP_D5, OUTPUT);
   pinMode(DISP_D6, OUTPUT);
   pinMode(DISP_D7, OUTPUT);  
-  pinMode(MOTOR_DIRECTION, OUTPUT);
-  pinMode(MOTOR_STEP, OUTPUT);
+  pinMode(MOTOR_DIRECTION1, OUTPUT);
+  pinMode(MOTOR_STEP1, OUTPUT);
   pinMode(MOTOR_ENABLE, OUTPUT);
   digitalWrite(MOTOR_ENABLE, HIGH);
-  digitalWrite(MOTOR_STEP, LOW);
+  digitalWrite(MOTOR_STEP1, LOW);
+
+#ifdef SECOND_AXIS
+  pinMode(MOTOR_DIRECTION2, OUTPUT);
+  pinMode(MOTOR_STEP2, OUTPUT);
+  digitalWrite(MOTOR_STEP2, LOW);
+#endif
 
   // Joystick
   if(JOYSTICKVERSION)
@@ -916,17 +947,43 @@ void ProcessMovement()
         // Select the direction
         if(MotorDirection==0)           // Going to the Left
         {
-           digitalWrite(MOTOR_DIRECTION, HIGH);  // 25.11.2021 --> Change
+           digitalWrite(MOTOR_DIRECTION1, HIGH);  // 25.11.2021 --> Change
            CurrentPosition--;
         }
         else                            // Going to the Right
         {
-           digitalWrite(MOTOR_DIRECTION, LOW); // 25.11.2021 --> Change
+           digitalWrite(MOTOR_DIRECTION1, LOW); // 25.11.2021 --> Change
            CurrentPosition++;
         }
         
-        digitalWrite(MOTOR_STEP, HIGH);     // Perform one Motorstep
-        digitalWrite(MOTOR_STEP, LOW);
+        digitalWrite(MOTOR_STEP1, HIGH);     // Perform one Motorstep
+        digitalWrite(MOTOR_STEP1, LOW);
+
+#ifdef SECOND_AXIS
+        if(second_axis_dir==0) {    //forward
+          digitalWrite(MOTOR_DIRECTION2, HIGH);
+
+          if(K_xy_count == K_xy){
+            digitalWrite(MOTOR_STEP2, HIGH);     // Perform one Motorstep
+            digitalWrite(MOTOR_STEP2, LOW);
+            K_xy_count = 0;
+          } else {
+            K_xy_count++;
+          }
+
+        } else {  //backward
+          digitalWrite(MOTOR_DIRECTION2, LOW);
+
+          if(K_xy_count == -1){
+            digitalWrite(MOTOR_STEP2, HIGH);     // Perform one Motorstep
+            digitalWrite(MOTOR_STEP2, LOW);
+            K_xy_count = K_xy - 1;
+          } else {
+            K_xy_count--;
+          }
+        }
+#endif
+
     }
 }
 
@@ -1020,13 +1077,19 @@ void ProcessReceivedData()
             understood = true;
           }
 
+#ifdef SECOND_AXIS //XXX
           //////////////////////////////////////////////
           // Set the 'gotorel' command --> relative movement
           //////////////////////////////////////////////         
-          if(hasStringInside( temp , "gotorel" ) && (understood == false))
+          if(hasStringInside( temp , "gotorelrev" ) && (understood == false))
           {
             // Staying Relative!
             long relpos = getLongElementFromString(temp,1,' ');
+            if(relpos > 0){
+              second_axis_dir = 0;
+            }else{
+              second_axis_dir = 1;
+            }
             TargetPosition = CurrentPosition + relpos;
             isHomecoming = false;
             SetupStateMachine();
@@ -1034,6 +1097,30 @@ void ProcessReceivedData()
             //Serial.println(string);
             understood = true;
           }
+#endif
+
+          //////////////////////////////////////////////
+          // Set the 'gotorel' command --> relative movement
+          //////////////////////////////////////////////         
+          if(hasStringInside( temp , "gotorel" ) && (understood == false))
+          {
+            // Staying Relative!
+            long relpos = getLongElementFromString(temp,1,' ');
+#ifdef SECOND_AXIS
+            if(relpos > 0){
+              second_axis_dir = 1;
+            }else{
+              second_axis_dir = 2;
+            }
+#endif
+            TargetPosition = CurrentPosition + relpos;
+            isHomecoming = false;
+            SetupStateMachine();
+            //sprintf(string, "Moving relative position: %s", String(relpos, DEC).c_str());
+            //Serial.println(string);
+            understood = true;
+          }
+
 
           //////////////////////////////////////////////
           // Set the 'goto' command --> absolute movement
