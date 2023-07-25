@@ -15,19 +15,21 @@ from textual.binding import Binding
 from textual.widget import Widget
 from textual.widgets import Footer, Header, TextLog, Input, Static
 from textual.containers import Horizontal, Vertical, ScrollableContainer
+from textual.reactive import reactive
 if TYPE_CHECKING:
     from textual.message import Message
 
 # serial connection
 import serial
 import time
+from time import time
 import re
 
 # data structures
 import queue
 
 # Important constants for Serial comm
-COM_PORT = "COM9"
+COM_PORT = "COM3"
 BAUD_RATE = 57600
 
 
@@ -39,6 +41,19 @@ class enceladus_serial_cmd_handler:
 
     all runtimecode is executed through run function
     responses are passed on to cmd line handler log function and to command callers"""
+    
+    #################  attribute types  #####################
+    # reactive variables
+    _datarate_in:        int
+    def _set_datarate(self, rate:int):
+        self._datarate_in = rate
+        self.w
+    _datarate_out:       int
+    _send_queue_level:   float
+    _port:               str
+    _baudrate:           int
+    _port_open:          bool
+    
     
     
     """ the currently active command"""
@@ -70,7 +85,7 @@ class enceladus_serial_cmd_handler:
     script_handler = None
     script_mode = False
 
-    def __init__(self, ui: cmd_interface, com_port:str, baudrate:int = 57600):
+    def __init__(self,widget:EnceladusSerialWidget, ui: cmd_interface, com_port:str, baudrate:int = 57600):
         """Creates new instance of the Enceladus command handler
 
         Args:
@@ -78,108 +93,31 @@ class enceladus_serial_cmd_handler:
             port (str): COM Port descriptive name (eg. COM3)
             baudrate (int): Baudrate of serial connection
         """
-
+        # ui widget
+        
+        # reactive variables
+        self._datarate_in = 0
+        self._datarate_out = 0
+        self._send_queue_level = 0.0
+        self._port = com_port
+        self._baudrate = baudrate
+        self._port_open = False
+        
         # Serial port stuff
-        self.port = com_port
-        self.baudrate = baudrate
-        self.conn = serial.Serial(port=self.port, baudrate=self.baudrate)
+        self._conn = serial.Serial(port=self._port, baudrate=self._baudrate)
 
         # gui related stuff
-        self.ui = ui
+        self._ui = ui
 
         # last preperations
-        self._reset_arduino_and_input_buffer_()
+        #self._reset_arduino_and_input_buffer_()
     
-    async def run(self):
-        """
-        async runtime code read from serial buffer
-        """
-        #print("run serial")
-        await self._read_next_line_()
-        if self.script_mode and self.script_handler is not None:
-            await self.script_handler.run_script()
-
-        
-    def try_enceladus_command(self,cmd:str) -> str:
-        """checks command for validity and passed it to serial buffer
-        
-
-        Args:
-            cmd (str): command to send
-
-        Returns:
-            str: validity response
-        """
-        name = self._extract_cmd_name_(cmd)
-        print("try command")
-        
-        if((name == "abort") or ((name is not None) and (name in self.allowed_commands))): #check if command allowed
-            self.active_command["name"] = name
-            self.active_command["finished"] = False
-            self.active_command["error"] = False
-            self.active_command["response"] = None
-            self._send_cmd_(cmd)
-            return "sent successfully"
-        elif (name is not None and cmd in self.allowed_scripts):
-            return self.enter_script_mode(cmd)
-        else:
-            return "command not allowed"
-    
-    def enter_script_mode(self,cmd:str)->str:
-        self.script_handler = coilwinder_machine_script(self,self.ui)
-        self.script_mode = True
-        return "entered scriptmode"
-    
-    def exit_script_mode(self,exit_status:str):
-        self.script_handler = None
-        self.script_mode = False
-        return exit_status
 
 
-        
-    async def _read_next_line_(self):
-        """read next line from serial buffer
-        """
-        while (self.conn.in_waiting != 0):
-            line = str(self.conn.readline()).replace("\\r\\n\'","").replace("b\'","")
 
-            await self.ui.add_ext_line_to_log(line)
 
-            if(not self.active_command["finished"]):
-                if(self.cmd_finished_responses[self.active_command["name"]] in line):
-                    # we got response from a currently active command
 
-                    self.active_command["finished"] = True
-                    self.active_command["response"] = line
-                    await self.ui.add_ext_line_to_log("cmd: \""+self.active_command["name"]+"\" finished")
-    
-    def _send_cmd_(self, cmd:str):
-        """actually sending the command
 
-        Args:
-            cmd (str): validated command
-        """
-        self.conn.write((cmd+"\n").encode())
-    
-    def _extract_cmd_name_(self,cmd:str) -> str:
-        """gets first word out of cmd string
-
-        Args:
-            cmd (str): command
-
-        Returns:
-            str: first word or None
-        """
-        return re.search("^([\w\-]+)",cmd)[0]
-        
-    
-    def _reset_arduino_and_input_buffer_(self):
-        """resets the arduino and the serial buffer
-        """
-        self.conn.setDTR(False)
-        time.sleep(1)
-        self.conn.flushInput()
-        self.conn.setDTR(True)
 
 
 class coilwinder_machine_script:
@@ -220,7 +158,6 @@ class coilwinder_machine_script:
 
     # behavioral stuff
     script_mode = False
-    command_active = False
     script_state = "unconnected"
     
     def __init__(self, enceladus:enceladus_serial_cmd_handler,ui: cmd_interface):
@@ -311,44 +248,172 @@ class coilwinder_machine_script:
     
 
 ########### Command Line User Interface stuff ##############
+#class EnceldausAutomationScriptWidget(Widget):
+    
 
-class MachineInterfaceWidget(Widget):
+class EnceladusSerialWidget(Widget):
     """
     This widget is only used to get a asyncdronous background task for
     handling serial interface to enceladus and autonomos controll of
     the coilwinder
     """
     
-    #serial handler stuff
-    enceladus_handler = 0
-    connection_active = False
-    command_active = False
-    script_active = False
+    # reactives
+    datarate_in = reactive(0)
+    datarate_out = reactive(0)
+    send_queue_level = reactive(0.0)
+    port = reactive(COM_PORT)
+    baudrate = reactive(BAUD_RATE)
+    port_open = reactive(False)
+    
+    # serial port stuff
+    _conn: serial.Serial
+    
+    # command tracking stuff
+    """ the currently active command"""
+    active_command = {
+        "name":None,
+        "finished":True,
+        "error":False,
+        "response":None
+    }
+    
+    """ allowed commands"""
+    allowed_commands = ["whoareyou","gotorelrev","gotorel","abort","disableidlecurrent","getpos"]
+    allowed_scripts = ["script simple winding"]
+    
+    """ command responses which indicate that a command is finished
+
+    Returns:
+        _type_: string
+    """
+    cmd_finished_responses = {
+        "whoareyou":"FrankensteinsGemueseGarten_0v0",
+        "gotorelrev":"DONE",
+        "gotorel":"DONE",
+        "abort":"Aborting movement!",
+        "disableidlecurrent":"Idle Current Disabled!",
+        "getpos":"Current position:"
+    }
+    
+    # stuff 
     
     counter = 0
     
+    script_handler = None
+    script_mode = False
+    
     async def async_functionality(self):
-        print("add ENCELADUS")
-        self.enceladus_handler = enceladus_serial_cmd_handler(ui = self.app, com_port = COM_PORT,baudrate = BAUD_RATE)
-        
-        print("add ENCELADUS FINISHED")
         while True:
-            await asyncio.sleep(0.2)  # Mock async functionality
-            await self.enceladus_handler.run()
+            """
+            async runtime code read from serial buffer
+            """
+            await self._read_next_line_()
+            if self.script_mode and self.script_handler is not None:
+                await self.script_handler.run_script()
+            
+            await asyncio.sleep(0.001)  # Mock async functionality
+            
             self.counter += 1
             self.refresh()  # This is required for ongoing refresh
             self.app.refresh()  # Also required for ongoing refresh, unclear why, but commenting-out breaks live refresh.
 
     def render(self) -> Align:
-        now = datetime.strftime(datetime.now(), "%H:%M:%S.%f")[:-5]
-        text = f"{now}\nCounter: {self.counter}"
+        text = """
+datarate: in={}, out={}
+port open: {}, send queue lvl: {}
+port: {}, baud rate: {}
+Counter: {}
+            """.format(self.datarate_in,self.datarate_out,self.port_open,self.send_queue_level,self.port,self.baudrate,self.counter)
         return Align.center(text, vertical="middle")
     
     
     async def on_mount(self):
+        # get backend instance
+        self._conn = serial.Serial(port=self.port, baudrate=self.baudrate)
+        await self._reset_arduino_and_input_buffer_()
+        
+        # start the async repetitive serial handler
         asyncio.create_task(self.async_functionality())
 
+    def try_enceladus_command(self,cmd:str) -> str:
+        """checks command for validity and passed it to serial buffer
+        
 
+        Args:
+            cmd (str): command to send
+
+        Returns:
+            str: validity response
+        """
+        name = self._extract_cmd_name_(cmd)
+        print("try command")
+        
+        if((name == "abort") or ((name is not None) and (name in self.allowed_commands))): #check if command allowed
+            self.active_command["name"] = name
+            self.active_command["finished"] = False
+            self.active_command["error"] = False
+            self.active_command["response"] = None
+            self._send_cmd_(cmd)
+            return "sent successfully"
+        elif (name is not None and cmd in self.allowed_scripts):
+            return self.enter_script_mode(cmd)
+        else:
+            return "command not allowed"
+    
+    def enter_script_mode(self,cmd:str)->str:
+        self.script_handler = coilwinder_machine_script(self,self.app)
+        self.script_mode = True
+        return "entered scriptmode"
+    
+    def exit_script_mode(self,exit_status:str):
+        self.script_handler = None
+        self.script_mode = False
+        return exit_status
+
+    async def _read_next_line_(self):
+        """read next line from serial buffer
+        """
+        while (self._conn.in_waiting != 0):
+            line = str(self._conn.readline()).replace("\\r\\n\'","").replace("b\'","")
+
+            await self.app.add_ext_line_to_log(line)
+
+            if(not self.active_command["finished"]):
+                if(self.cmd_finished_responses[self.active_command["name"]] in line):
+                    # we got response from a currently active command
+
+                    self.active_command["finished"] = True
+                    self.active_command["response"] = line
+                    await self.app.add_ext_line_to_log("cmd: \""+self.active_command["name"]+"\" finished")
+    
+    def _send_cmd_(self, cmd:str):
+        """actually sending the command
+
+        Args:
+            cmd (str): validated command
+        """
+        self._conn.write((cmd+"\n").encode())
+    
+    def _extract_cmd_name_(self,cmd:str) -> str:
+        """gets first word out of cmd string
+
+        Args:
+            cmd (str): command
+
+        Returns:
+            str: first word or None
+        """
+        return re.search("^([\w\-]+)",cmd)[0]
+        
+    async def _reset_arduino_and_input_buffer_(self):
+        """resets the arduino and the serial buffer
+        """
+        self._conn.setDTR(False)
+        await asyncio.sleep(1)
+        self._conn.flushInput()
+        self._conn.setDTR(True)
+        
 class InputValidator(Validator):  
     def validate(self, value: str) -> ValidationResult:
         """Check a string is equal to its reverse."""
@@ -388,20 +453,26 @@ class cmd_interface(App):
     ]
     
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True, name="Enceladus interface Coilwinder")
-        yield Footer()
-        #yield Input(placeholder="Enter Command..")
+        self.header = Header(show_clock=True, name="Enceladus interface Coilwinder")
+        
+        self.textlog = TextLog(id="output",highlight=True,markup=True,classes = "box")
+        self.enc_ser_widget = EnceladusSerialWidget(classes = "box")
+        self.cmd_input = Input(id="input",placeholder="Enter cmd...",classes = "box",validators=[InputValidator()])
+        
+        self.footer = Footer()
+        yield self.header
+        yield self.footer
         yield Vertical(
             Horizontal(
-                TextLog(id="output",highlight=True,markup=True,classes = "box"),
+                self.textlog,
                 ScrollableContainer(
-                    MachineInterfaceWidget(classes = "box"),
+                    self.enc_ser_widget,
                     Static("Two",classes = "box"),
                     Static("Three",classes = "box"),
                     id="right-vert"
                 )
             ),
-            Input(id="input",placeholder="Enter cmd...",classes = "box",validators=[InputValidator()]),
+            self.cmd_input,
         )
     
     @on(Input.Submitted)
@@ -411,24 +482,19 @@ class cmd_interface(App):
         await self._add_line_to_log_(event.value)
         text_input.value = ""
         
-        
-        encel_cmd = self.query_one(MachineInterfaceWidget).enceladus_handler
-        ret = encel_cmd.try_enceladus_command(event.value)
+        ret = self.enc_ser_widget.try_enceladus_command(event.value)
         await self._add_line_to_log_(ret)
     
     async def action_focus_input(self)->None:
-        text_input = self.query_one(Input)
-        text_input.focus()
+        self.cmd_input.focus()
         return
     
     async def action_focus_log(self)->None:
-        text_log = self.query_one(TextLog)
-        text_log.focus()
+        self.textlog.focus()
         return
     
     async def action_reset_focus(self) -> None:
-        header = self.query_one(Header)
-        header.focus()
+        self.header.focus()
         return
     
     async def action_submit(self) -> None:
@@ -436,12 +502,10 @@ class cmd_interface(App):
         return
 
     async def _add_line_to_log_(self,new_line:str) -> None:
-        text_log = self.query_one(TextLog)
-        text_log.write(new_line)
+        self.textlog.write(new_line)
 
     async def add_ext_line_to_log(self,new_line:str) -> None:
-        text_log = self.query_one(TextLog)
-        text_log.write(new_line)
+        self.textlog.write(new_line)
 
 
 
