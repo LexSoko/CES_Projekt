@@ -46,6 +46,7 @@
  */
 
 #include <LiquidCrystal.h>
+#include "HX711.h"
 
 // DEFINTION OF DIGITAL PINS for Display
 #define DISP_RS 4
@@ -88,7 +89,14 @@ int ACD_Y_PIN = A7;
 #define MOTOR_DIRECTION2 9
 #define MOTOR_STEP2 10
 
-
+#define LOADCELL
+#define PIN_DT 19
+#define PIN_SCK 18
+byte loadcell_gain = 64;
+long loadcell_read = 0; // raw loadcell value
+bool loadcell_active = false;
+unsigned long time_meas = 0;
+HX711 loadcell;     // loadcell instance
 
 // Create a Display
 LiquidCrystal lcd(DISP_RS, DISP_E, DISP_D4, DISP_D5, DISP_D6, DISP_D7);
@@ -386,6 +394,10 @@ void setup() {
   pinMode(MOTOR_DIRECTION2, OUTPUT);
   pinMode(MOTOR_STEP2, OUTPUT);
   digitalWrite(MOTOR_STEP2, LOW);
+#endif
+
+#ifdef LOADCELL
+  loadcell.begin(PIN_DT,PIN_SCK,loadcell_gain);
 #endif
 
   // Joystick
@@ -980,6 +992,14 @@ void ProcessMovement()
 #endif
 
     }
+
+    if(loadcell_active && loadcell.is_ready()){
+      loadcell_read = loadcell.read();
+      time_meas = millis();
+      sprintf(string, "m %s %s %s %s" , String(time_meas, DEC).c_str(), String(CurrentPosition, DEC).c_str(), String(CurrentPosition2, DEC).c_str(), String(loadcell_read, DEC).c_str());
+      //sprintf(string, "m %d %d %d %d" , time_meas, CurrentPosition, CurrentPosition2, loadcell_read);
+      Serial.println(string);
+    }
 }
 
 // Step function gets called with the Timer speed.
@@ -1071,6 +1091,61 @@ void ProcessReceivedData()
             
             understood = true;
           }
+
+#ifdef LOADCELL
+          //////////////////////////////////////////////
+          // read the average of n measured values from the loadcell
+          //////////////////////////////////////////////         
+          if(hasStringInside( temp , "loadcellav" ) && (understood == false))
+          {
+            if(StateMachineState != STATEMACHINESTATE_IDLE){
+              Serial.println("Ongoing Movement!");
+              understood = true;
+            }
+            else
+            {
+              long n = getLongElementFromString(temp,1,' ');
+              loadcell_read = loadcell.read_average(n);
+              sprintf(string, "loadcellAverage: %s", String(loadcell_read, DEC).c_str());
+              Serial.println(string);
+              understood = true;
+            }
+          }
+
+          //////////////////////////////////////////////
+          // read one raw value from loadcell
+          //////////////////////////////////////////////         
+          if(hasStringInside( temp , "loadcellraw" ) && (understood == false))
+          {
+            if(StateMachineState != STATEMACHINESTATE_IDLE){
+              Serial.println("Ongoing Movement!");
+              understood = true;
+            }
+            else
+            {
+              loadcell_read = loadcell.read();
+              sprintf(string, "loadcellRaw: %s", String(loadcell_read, DEC).c_str());
+              Serial.println(string);
+              understood = true;
+            }
+          }
+          //////////////////////////////////////////////
+          // start continious measurements from loadcell
+          //////////////////////////////////////////////         
+          if(hasStringInside( temp , "loadcellstart" ) && (understood == false))
+          {
+            loadcell_active = true;
+            understood = true;
+          }
+          //////////////////////////////////////////////
+          // stop continious measurements from loadcell
+          //////////////////////////////////////////////         
+          if(hasStringInside( temp , "loadcellstop" ) && (understood == false))
+          {
+            loadcell_active = false;
+            understood = true;
+          }
+#endif
 
 #ifdef SECOND_AXIS //XXX
           //////////////////////////////////////////////
