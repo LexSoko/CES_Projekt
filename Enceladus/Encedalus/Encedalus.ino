@@ -80,28 +80,14 @@ int ACD_Y_PIN = A7;
 #define SECOND_AXIS
 #define MOTOR_ENABLE 11
 
-
-
-
-//#define MOTOR_DIRECTION1 9  //only active one
-//#define MOTOR_STEP1 10
-//
-//#define MOTOR_DIRECTION2 12
-//#define MOTOR_STEP2 13
-
-
-
+// motor 1 is main motor and also gets faster step impulses
 #define MOTOR_DIRECTION1 12  //only active one
 #define MOTOR_STEP1 13
 
+// motor 2 is secondary axis motor and gets slower step impulses by factor K_xy
 #define MOTOR_DIRECTION2 9
 #define MOTOR_STEP2 10
 
-
-
-const char K_xy = 15;
-int K_xy_count = 0;
-int second_axis_dir = 0; // 0 is forward and 1 is backward
 
 
 // Create a Display
@@ -136,6 +122,12 @@ int Timer1DelayRegisterPreloadValue = 65000;              //
 int MotorDirection = 0;               // Motordirection = 0 --> Motor to the Left (CCW), Motordirection = 1 --> Motor to the right (clockwise)
 int MaxMotorSpeed = 200;                 // Motorspeed can be between 0 and 1000 --> setting the timer value
 
+// secondary axis variables
+const char K_xy = 15;
+int K_xy_count = 0;
+int second_axis_dir_rev = 0; // 0 is same as main axis 1 is reversed of main axis
+long CurrentPosition2=0;
+
 long TargetPosition=0;                // Always Absolute
 long CurrentPosition=0;               // set to 0 by home!
 long LastHome=0;                      // set to 0 by home!
@@ -143,7 +135,7 @@ long Rampsteps = 0;
 
 long lastTimeStamp = 0;
 
-long Oversteps = 1000;                // 1000 by default
+long Oversteps = 0;                // 1000 by default
 long StateMachineSwitchpoint1 = 0;
 long StateMachineSwitchpoint2 = 0;
 char Signum = 0;
@@ -947,26 +939,28 @@ void ProcessMovement()
         // Select the direction
         if(MotorDirection==0)           // Going to the Left
         {
-           digitalWrite(MOTOR_DIRECTION1, HIGH);  // 25.11.2021 --> Change
-           CurrentPosition--;
+            digitalWrite(MOTOR_DIRECTION1, HIGH);  // 25.11.2021 --> Change
+            CurrentPosition--;
         }
         else                            // Going to the Right
         {
-           digitalWrite(MOTOR_DIRECTION1, LOW); // 25.11.2021 --> Change
-           CurrentPosition++;
+            digitalWrite(MOTOR_DIRECTION1, LOW); // 25.11.2021 --> Change
+            CurrentPosition++;
         }
         
         digitalWrite(MOTOR_STEP1, HIGH);     // Perform one Motorstep
         digitalWrite(MOTOR_STEP1, LOW);
 
 #ifdef SECOND_AXIS
-        if(second_axis_dir==0) {    //forward
+        if((MotorDirection==0 && second_axis_dir_rev==0) ||
+          (MotorDirection==1 && second_axis_dir_rev==1)) {    //forward
           digitalWrite(MOTOR_DIRECTION2, HIGH);
 
           if(K_xy_count == K_xy){
             digitalWrite(MOTOR_STEP2, HIGH);     // Perform one Motorstep
             digitalWrite(MOTOR_STEP2, LOW);
             K_xy_count = 0;
+            CurrentPosition2 ++;
           } else {
             K_xy_count++;
           }
@@ -978,6 +972,7 @@ void ProcessMovement()
             digitalWrite(MOTOR_STEP2, HIGH);     // Perform one Motorstep
             digitalWrite(MOTOR_STEP2, LOW);
             K_xy_count = K_xy - 1;
+            CurrentPosition2 --;
           } else {
             K_xy_count--;
           }
@@ -1085,11 +1080,7 @@ void ProcessReceivedData()
           {
             // Staying Relative!
             long relpos = getLongElementFromString(temp,1,' ');
-            if(relpos > 0){
-              second_axis_dir = 0;
-            }else{
-              second_axis_dir = 1;
-            }
+            second_axis_dir_rev = 1;
             TargetPosition = CurrentPosition + relpos;
             isHomecoming = false;
             SetupStateMachine();
@@ -1107,11 +1098,7 @@ void ProcessReceivedData()
             // Staying Relative!
             long relpos = getLongElementFromString(temp,1,' ');
 #ifdef SECOND_AXIS
-            if(relpos > 0){
-              second_axis_dir = 1;
-            }else{
-              second_axis_dir = 2;
-            }
+            second_axis_dir_rev = 0;
 #endif
             TargetPosition = CurrentPosition + relpos;
             isHomecoming = false;
@@ -1334,7 +1321,9 @@ void ProcessReceivedData()
           //////////////////////////////////////////////         
           if(hasStringInside( temp , "getpos" ) && (understood == false))
           {
-            sprintf(string, "Current position: %s",String(CurrentPosition, DEC).c_str());
+            sprintf(string, "Current position: %s %s",
+              String(CurrentPosition, DEC).c_str(),
+              String(CurrentPosition2, DEC).c_str());
             Serial.println(string);
             understood = true;
           }

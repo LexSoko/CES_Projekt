@@ -27,8 +27,8 @@ import re
 import queue
 
 # Important constants for Serial comm
-COM_PORT = "COM4"
-BAUD_RATE = 115200
+COM_PORT = "COM9"
+BAUD_RATE = 57600
 
 
 ###################### Coulwinder Interface stuff ######################
@@ -45,11 +45,13 @@ class enceladus_serial_cmd_handler:
     active_command = {
         "name":None,
         "finished":True,
-        "error":False
+        "error":False,
+        "response":None
     }
     
     """ allowed commands"""
-    allowed_commands = ["whoareyou","gotorelrev","gotorel","abort"]
+    allowed_commands = ["whoareyou","gotorelrev","gotorel","abort","disableidlecurrent","getpos"]
+    allowed_scripts = ["script simple winding"]
     
     """ command responses which indicate that a command is finished
 
@@ -60,8 +62,13 @@ class enceladus_serial_cmd_handler:
         "whoareyou":"FrankensteinsGemueseGarten_0v0",
         "gotorelrev":"DONE",
         "gotorel":"DONE",
-        "abort":"Aborting movement!"
+        "abort":"Aborting movement!",
+        "disableidlecurrent":"Idle Current Disabled!",
+        "getpos":"Current position:"
     }
+
+    script_handler = None
+    script_mode = False
 
     def __init__(self, ui: cmd_interface, com_port:str, baudrate:int = 57600):
         """Creates new instance of the Enceladus command handler
@@ -87,7 +94,11 @@ class enceladus_serial_cmd_handler:
         """
         async runtime code read from serial buffer
         """
+        #print("run serial")
         await self._read_next_line_()
+        if self.script_mode and self.script_handler is not None:
+            await self.script_handler.run_script()
+
         
     def try_enceladus_command(self,cmd:str) -> str:
         """checks command for validity and passed it to serial buffer
@@ -100,27 +111,46 @@ class enceladus_serial_cmd_handler:
             str: validity response
         """
         name = self._extract_cmd_name_(cmd)
+        print("try command")
         
-        if(name is not None and name in self.allowed_commands): #check if command allowed
+        if((name == "abort") or ((name is not None) and (name in self.allowed_commands))): #check if command allowed
             self.active_command["name"] = name
             self.active_command["finished"] = False
+            self.active_command["error"] = False
+            self.active_command["response"] = None
             self._send_cmd_(cmd)
             return "sent successfully"
+        elif (name is not None and cmd in self.allowed_scripts):
+            return self.enter_script_mode(cmd)
         else:
             return "command not allowed"
+    
+    def enter_script_mode(self,cmd:str)->str:
+        self.script_handler = coilwinder_machine_script(self,self.ui)
+        self.script_mode = True
+        return "entered scriptmode"
+    
+    def exit_script_mode(self,exit_status:str):
+        self.script_handler = None
+        self.script_mode = False
+        return exit_status
+
+
         
     async def _read_next_line_(self):
         """read next line from serial buffer
         """
         while (self.conn.in_waiting != 0):
-            line = str(self.conn.readline())
+            line = str(self.conn.readline()).replace("\\r\\n\'","").replace("b\'","")
 
             await self.ui.add_ext_line_to_log(line)
 
             if(not self.active_command["finished"]):
                 if(self.cmd_finished_responses[self.active_command["name"]] in line):
-                    # active command was finished successfully
+                    # we got response from a currently active command
+
                     self.active_command["finished"] = True
+                    self.active_command["response"] = line
                     await self.ui.add_ext_line_to_log("cmd: \""+self.active_command["name"]+"\" finished")
     
     def _send_cmd_(self, cmd:str):
@@ -152,7 +182,7 @@ class enceladus_serial_cmd_handler:
         self.conn.setDTR(True)
 
 
-class coilwinder_machine:
+class coilwinder_machine_script:
     """
     this handler should block manual commands in script mode
     this handler should be a hardware firewall by keeping track of machine bounds
@@ -165,20 +195,117 @@ class coilwinder_machine:
         _type_: _description_
     """
     
-    #interface handler
+    # interface handler
     serial_handler = None
     
-    #machine bounds:
+    # machine bounds:
     lim_pos_up = None
     lim_pos_low = None
     lim_vel_up = 200
     lim_vel_down = 0
     lim_accel_up = 100
     lim_accel_down = 0
+    K_xy = 15
     
+    # current Machine parameters (vectors for both axis)
+    current_pos = [None,None]
+    target_pos = [0,0]
+    paused_pos = [0,0]
+    currentOn = False
+    measurementOn = False
+
+    # Coil parameters
+    coil_limit_sec_up = 80000
+    coil_limit_sec_low = 0
+
     # behavioral stuff
     script_mode = False
+    command_active = False
+    script_state = "unconnected"
     
+    def __init__(self, enceladus:enceladus_serial_cmd_handler,ui: cmd_interface):
+
+        # importatant class references
+        self.serial_handler = enceladus
+        self.ui = ui
+
+        # state variables
+        ## unconnected state
+        self.sent_whoareyou = False
+        self.received_name = False
+        ## position request state
+        self.sent_pos_req = False
+        self.received_pos_resp = False
+        ## limit setting
+        self.limits_set = False
+
+    async def run_script(self):
+        #print("run script")
+        await self.simple_winding()
+    
+    async def simple_winding(self):
+        match self.script_state:
+            case "unconnected":
+                # check if machine is responsive
+                if not self.sent_whoareyou:
+                    succ = self.serial_handler.try_enceladus_command("whoareyou")
+                    if succ == "sent successfully":
+                        self.sent_whoareyou = True
+                        await self._script_log_("connection test started")
+                
+                else:
+                    if self.serial_handler.active_command["finished"]:
+                        self.received_name = True
+                        await self._script_log_("connection test successfull, enter position request")
+                        self.script_state = "position_request"
+
+
+
+            case "position_request":
+                # get current position
+                if not self.sent_pos_req:
+                    succ = self.serial_handler.try_enceladus_command("getpos")
+                    if succ == "sent successfully":
+                        self.sent_pos_req = True
+                        await self._script_log_("sent position request")
+                
+                else:
+                    if self.serial_handler.active_command["finished"]:
+                        self.received_pos_resp = True
+                        (self.current_pos[0],self.current_pos[1]) = self.parse_pos_resp(self.serial_handler.active_command["response"])
+                        await self._script_log_("pos received as "+str(self.current_pos)+ ", enter limit setting")
+                        self.script_state = "limit_setting"
+
+            case "limit_setting":
+                # set speed, acceleration and position limits
+                if not self.limits_set:
+                    await self._script_log_("entered limit setting")
+                    self.limits_set = True
+                    self.script_state = "finished"
+
+            #case "not_on_start_pos":
+                # drive to starting position
+            case "finished":
+                status = self.serial_handler.exit_script_mode("finished")
+                await self._script_log_(status)
+
+            case _:
+                print("default")
+    
+    def parse_pos_resp(self,response:str)->tuple:
+        words = response.split(' ')
+        pos1 = int(words[2].strip(" \r\n"))
+        pos2 = int(words[3].strip(" \r\n"))
+        return (pos1,pos2)
+
+    async def _script_log_(self, log:str):
+        await self.ui.add_ext_line_to_log("script: "+log)
+
+
+
+        
+
+
     
     
     
