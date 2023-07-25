@@ -20,3 +20,4 @@ dependencies:
     - telemetrix
     - customtkinter
     - tk
+    - textual
