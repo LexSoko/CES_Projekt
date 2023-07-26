@@ -1329,6 +1329,7 @@ void ProcessReceivedData()
             if(Acceleration > 100)
               Acceleration = 100;
 
+
             // To enable linear movement
             if(Acceleration==0)
                 Acceleration = 0;
