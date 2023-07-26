@@ -1,4 +1,5 @@
 
+
 # TODO Liste
 ## things done vor 27.06.2023
 
@@ -18,8 +19,8 @@
 - [ ] (abstände misst aleksey heute)
 - [ ] Filz besorgen (macht aleksey)
 - [x] Kugellagerhalterung überarbeiten (aleksey)
-- [x] Abstandshalter für kugellagerhalter (aleksey
-- [x] ] Abstandhalter für Arm noch machen (aleksey)
+- [x] Abstandshalter für kugellagerhalter (aleksey)
+- [x]  Abstandhalter für Arm noch machen (aleksey)
 - [x] Gewindestange oder stift für Abstandshalter (aleksey)
 - [x] Die eine Kugellagerhalterung mit erhebungen (aleksey)
 - [ ] Statt umlenkrolle direkt Abrollmotor NEMA17 (aleksey)

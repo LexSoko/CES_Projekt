@@ -34,7 +34,7 @@ loading points appears in the upload terminal!
 #define DIR_PIN_1           4          // Direction
 #define STEP_PIN_1          5          // Step
 
-#define DRIVER_ADDRESS_2    0b01       // TMC2209 Driver address according to MS1 and MS2
+#define DRIVER_ADDRESS_2    0b10       // TMC2209 Driver address according to MS1 and MS2
 #define DIR_PIN_2           18          // Direction
 #define STEP_PIN_2          19          // Step
 
