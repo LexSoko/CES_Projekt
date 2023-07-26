@@ -1134,6 +1134,7 @@ void ProcessReceivedData()
           //////////////////////////////////////////////         
           if(hasStringInside( temp , "loadcellstart" ) && (understood == false))
           {
+            Serial.println("measurement start!");
             loadcell_active = true;
             understood = true;
           }
@@ -1142,6 +1143,7 @@ void ProcessReceivedData()
           //////////////////////////////////////////////         
           if(hasStringInside( temp , "loadcellstop" ) && (understood == false))
           {
+            Serial.println("measurement end!");
             loadcell_active = false;
             understood = true;
           }

@@ -4,11 +4,14 @@ from typing import TYPE_CHECKING
 
 # imports for asyncronous task
 import asyncio
+from asyncio import Queue
+import aiofiles
+from aiofiles.base import AiofilesContextManager
 from datetime import datetime
 
 # TEXTUAL TUI imports
 from rich.align import Align
-from textual import on
+from textual import events, on
 from textual.app import App, ComposeResult
 from textual.validation import ValidationResult, Validator
 from textual.binding import Binding
@@ -85,7 +88,7 @@ class enceladus_serial_cmd_handler:
     script_handler = None
     script_mode = False
 
-    def __init__(self,widget:EnceladusSerialWidget, ui: cmd_interface, com_port:str, baudrate:int = 57600):
+    def __init__(self,widget:EnceladusSerialWidget, ui: CMD_Interface, com_port:str, baudrate:int = 57600):
         """Creates new instance of the Enceladus command handler
 
         Args:
@@ -160,7 +163,7 @@ class coilwinder_machine_script:
     script_mode = False
     script_state = "unconnected"
     
-    def __init__(self, enceladus:enceladus_serial_cmd_handler,ui: cmd_interface):
+    def __init__(self, enceladus:enceladus_serial_cmd_handler,ui: CMD_Interface):
 
         # importatant class references
         self.serial_handler = enceladus
@@ -249,7 +252,6 @@ class coilwinder_machine_script:
 
 ########### Command Line User Interface stuff ##############
 #class EnceldausAutomationScriptWidget(Widget):
-    
 
 class EnceladusSerialWidget(Widget):
     """
@@ -257,6 +259,8 @@ class EnceladusSerialWidget(Widget):
     handling serial interface to enceladus and autonomos controll of
     the coilwinder
     """
+    #scripty : coilwinder_machine_script | None=None
+    #coilwinder_machine_script(scripty).
     
     # reactives
     datarate_in = reactive(0)
@@ -265,7 +269,7 @@ class EnceladusSerialWidget(Widget):
     port = reactive(COM_PORT)
     baudrate = reactive(BAUD_RATE)
     port_open = reactive(False)
-    
+    coilwinder_script = reactive(bool | None)
     # serial port stuff
     _conn: serial.Serial
     
@@ -296,12 +300,24 @@ class EnceladusSerialWidget(Widget):
         "getpos":"Current position:"
     }
     
+    # queues
+    _measurement_file_queue:Queue[str]
+    
+    @property
+    def measurement_file_queue(self):
+        return self._measurement_file_queue
+    
+    @measurement_file_queue.setter
+    def measurement_file_queue(self, new_queue:Queue):
+        self._measurement_file_queue = new_queue
+    
+    
     # stuff 
     
     counter = 0
     
     script_handler = None
-    script_mode = False
+    coilwinder_script = False
     
     async def async_functionality(self):
         while True:
@@ -309,7 +325,7 @@ class EnceladusSerialWidget(Widget):
             async runtime code read from serial buffer
             """
             await self._read_next_line_()
-            if self.script_mode and self.script_handler is not None:
+            if self.coilwinder_script and self.script_handler is not None:
                 await self.script_handler.run_script()
             
             await asyncio.sleep(0.001)  # Mock async functionality
@@ -319,12 +335,25 @@ class EnceladusSerialWidget(Widget):
             self.app.refresh()  # Also required for ongoing refresh, unclear why, but commenting-out breaks live refresh.
 
     def render(self) -> Align:
+        
         text = """
 datarate: in={}, out={}
-port open: {}, send queue lvl: {}
+port open: {},
+send queue lvl: {}
 port: {}, baud rate: {}
-Counter: {}
-            """.format(self.datarate_in,self.datarate_out,self.port_open,self.send_queue_level,self.port,self.baudrate,self.counter)
+Counter: {},
+script_mode: {}
+            """.format(
+                self.datarate_in,
+                self.datarate_out,
+                self.port_open,
+                self.send_queue_level,
+                self.port,self.baudrate,
+                self.counter,
+                self.coilwinder_script
+        )
+            
+            
         return Align.center(text, vertical="middle")
     
     
@@ -363,28 +392,32 @@ Counter: {}
     
     def enter_script_mode(self,cmd:str)->str:
         self.script_handler = coilwinder_machine_script(self,self.app)
-        self.script_mode = True
+        self.coilwinder_script = True
         return "entered scriptmode"
     
     def exit_script_mode(self,exit_status:str):
         self.script_handler = None
-        self.script_mode = False
+        self.coilwinder_script = False
         return exit_status
 
     async def _read_next_line_(self):
         """read next line from serial buffer
         """
         while (self._conn.in_waiting != 0):
-            line = str(self._conn.readline()).replace("\\r\\n\'","").replace("b\'","")
+            line = str(self._conn.readline())
+            print("here baby")
+            print(line)
+            data = line.replace("\\r\\n\'","").replace("b\'","")
 
-            await self.app.add_ext_line_to_log(line)
+            await CMD_Interface(self.app).add_ext_line_to_log("hello")
+            self._measurement_file_queue.put(data)
 
             if(not self.active_command["finished"]):
-                if(self.cmd_finished_responses[self.active_command["name"]] in line):
+                if(self.cmd_finished_responses[self.active_command["name"]] in data):
                     # we got response from a currently active command
 
                     self.active_command["finished"] = True
-                    self.active_command["response"] = line
+                    self.active_command["response"] = data
                     await self.app.add_ext_line_to_log("cmd: \""+self.active_command["name"]+"\" finished")
     
     def _send_cmd_(self, cmd:str):
@@ -413,7 +446,84 @@ Counter: {}
         await asyncio.sleep(1)
         self._conn.flushInput()
         self._conn.setDTR(True)
+
+
+
+class FileIOTaskWidget(Widget):
+    write_queue_fulliness = reactive(float)
+    filenames = reactive(list[str])
+    writespeeds = reactive(list[int])
+    
+    _measurements_queue:Queue #infinite sizes for now
+    @property
+    def measurements_queue(self):
+        return self._measurements_queue
+    
+    params_queue:Queue
+    
+    measurement_file_handle:AiofilesContextManager
+    meas_filename:str = "meas_xxx.csv"
+    
+    params_file_handle:AiofilesContextManager
+    params_filename:str = "para_xxx.csv"
+    
+    def __init__(self, *children: Widget, name: str | None = None, id: str | None = None, classes: str | None = None, disabled: bool = False) -> None:
         
+        self._measurements_queue = Queue(0)
+        self.params_queue = Queue(0)
+        
+        datestring = FileIOTaskWidget.return_datetime()
+        self.meas_filename = self.meas_filename.replace("xxx",datestring)
+        self.params_filename = self.params_filename.replace("xxx",datestring)
+        self.filenames.append(self.meas_filename)
+        self.filenames.append(self.params_filename)
+        
+        self.writespeeds.append(0)
+        
+        super().__init__(*children, name=name, id=id, classes=classes, disabled=disabled)
+    
+    
+    async def on_mount(self):
+        asyncio.create_task(self.filewrite_worker())
+        
+        #self.measurement_file_handle = await self.open_measurements_file()
+    
+    def render(self) -> Align:
+        
+        text = """
+filenames: {}
+
+writespeeds: {}
+            """.format(
+                self.filenames,
+                self.writespeeds
+        )
+            
+            
+        return Align.center(text, vertical="middle")
+    
+    async def filewrite_worker(self):
+        while True:
+            newline = await self._measurements_queue.get()
+            await self.write_queue_fulliness(newline)
+            self.writespeeds[0] += 1
+        
+    async def open_measurements_file(self):
+        self.measurement_file_handle = await aiofiles.open(self.meas_filename)
+    
+        
+    async def write_to_measurements_file(self,csvline:str):
+        # open the file
+        async with aiofiles.open(self.meas_filename, mode='w') as handle:
+            # write to the file
+            await handle.write(csvline)
+    
+    def return_datetime()->str:
+        return datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+        
+    
+    
+            
 class InputValidator(Validator):  
     def validate(self, value: str) -> ValidationResult:
         """Check a string is equal to its reverse."""
@@ -425,8 +535,10 @@ class InputValidator(Validator):
     @staticmethod
     def is_valid(value: str) -> bool:
         return value != "not valid"
+
+
     
-class cmd_interface(App):
+class CMD_Interface(App):
     CSS = """
     Static {
     content-align: center middle;
@@ -452,27 +564,73 @@ class cmd_interface(App):
         Binding(key="tab",action="reset_focus",description="unfocus")
     ]
     
+    
+    def __init__(self):
+        self._textlog = None
+        self._cmd_input = None
+        self._enc_ser_widget = None
+        self._header = None
+        self._files_wi = None
+        super().__init__()
+        
+    #important widgets
+    _textlog:TextLog
+    @property
+    def textlog(self)->TextLog:
+        return self._textlog
+    
+    _cmd_input:Input
+    @property
+    def cmd_input(self)->Input:
+        return self._cmd_input
+    
+    _enc_ser_widget:EnceladusSerialWidget
+    @property
+    def enc_ser_widget(self)->EnceladusSerialWidget:
+        return self._enc_ser_widget
+    
+    _header:Header
+    @property
+    def header(self)->Header:
+        return self._header
+    
+    _files_wi:FileIOTaskWidget
+    @property
+    def files_wi(self)->FileIOTaskWidget:
+        return self._files_wi
+    
+    
+    _measurements_filewrite_queue:Queue = None
+    @property
+    def _measurements_filewrite_queue(self):
+        if self._measurements_filewrite_queue is None:
+            filewi = self.query_one(FileIOTaskWidget)
+            if filewi is None:
+                return None
+            
+            self._measurements_filewrite_queue = filewi.measurements_queue
+        
+        return self._measurements_filewrite_queue
+    
+    def _push_measurement_filewrite_queue_reference(self,queue:Queue):
+        serwi = self.query_one(EnceladusSerialWidget)
+        if serwi is not None:
+            serwi.measurement_file_queue = queue
+    
     def compose(self) -> ComposeResult:
-        self.header = Header(show_clock=True, name="Enceladus interface Coilwinder")
-        
-        self.textlog = TextLog(id="output",highlight=True,markup=True,classes = "box")
-        self.enc_ser_widget = EnceladusSerialWidget(classes = "box")
-        self.cmd_input = Input(id="input",placeholder="Enter cmd...",classes = "box",validators=[InputValidator()])
-        
-        self.footer = Footer()
-        yield self.header
-        yield self.footer
+        #generating widged instances
+        yield Header(show_clock=True, name="Enceladus interface Coilwinder")
+        yield Footer()
         yield Vertical(
             Horizontal(
-                self.textlog,
+                TextLog(id="output",highlight=True,markup=True,classes = "box"),
                 ScrollableContainer(
-                    self.enc_ser_widget,
-                    Static("Two",classes = "box"),
-                    Static("Three",classes = "box"),
+                    EnceladusSerialWidget(classes = "box"),
+                    FileIOTaskWidget(classes = "box"),
                     id="right-vert"
                 )
             ),
-            self.cmd_input,
+            Input(id="input",placeholder="Enter cmd...",classes = "box",validators=[InputValidator()]),
         )
     
     @on(Input.Submitted)
@@ -482,19 +640,30 @@ class cmd_interface(App):
         await self._add_line_to_log_(event.value)
         text_input.value = ""
         
-        ret = self.enc_ser_widget.try_enceladus_command(event.value)
+        if self._enc_ser_widget is None:
+            self._enc_ser_widget = self.query_one(EnceladusSerialWidget)
+            
+        ret = self._enc_ser_widget.try_enceladus_command(event.value)
         await self._add_line_to_log_(ret)
     
     async def action_focus_input(self)->None:
-        self.cmd_input.focus()
+        
+        if self._cmd_input is None:
+            self._cmd_input = self.query_one(Input)
+            
+        self._cmd_input.focus()
         return
     
     async def action_focus_log(self)->None:
-        self.textlog.focus()
+        if self._textlog is None:
+            self._textlog = self.query_one(TextLog)
+        self._textlog.focus()
         return
     
     async def action_reset_focus(self) -> None:
-        self.header.focus()
+        if self._header is None:
+            self._header = self.query_one(Header)
+        self._header.focus()
         return
     
     async def action_submit(self) -> None:
@@ -502,13 +671,20 @@ class cmd_interface(App):
         return
 
     async def _add_line_to_log_(self,new_line:str) -> None:
-        self.textlog.write(new_line)
+        if self.textlog is None:
+            self._textlog = self.query_one(TextLog)
+        #await self.log(new_line)
+        self._textlog.write(new_line)
 
     async def add_ext_line_to_log(self,new_line:str) -> None:
+        if self.textlog is None:
+            self._textlog = self.query_one(TextLog)
+        #await self.log(new_line)
+        print("needed textlog")
         self.textlog.write(new_line)
 
 
 
 if __name__ == "__main__":
-    app = cmd_interface()
+    app = CMD_Interface()
     app.run()
