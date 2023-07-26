@@ -1,2 +1,3 @@
 *.pyc
 ~*.bkp
+winder_measurements/*
