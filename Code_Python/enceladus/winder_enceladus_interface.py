@@ -1,35 +1,28 @@
 from __future__ import annotations
 import os
 
-from typing import TYPE_CHECKING
-
 # imports for asyncronous task
 import asyncio
-from asyncio import Queue
+from asyncio import Queue, QueueEmpty
 import aiofiles
 from aiofiles.base import AiofilesContextManager
 from datetime import datetime
 
 # TEXTUAL TUI imports
 from rich.align import Align
-from textual import events, on
+from textual import on
 from textual.app import App, ComposeResult
-from textual.validation import ValidationResult, Validator
 from textual.binding import Binding
 from textual.widget import Widget
 from textual.widgets import Footer, Header, TextLog, Input, Static
 from textual.containers import Horizontal, Vertical, ScrollableContainer
 from textual.reactive import reactive
 from textual.message import Message
+from textual.events import Ready
 
 # serial connection
 import serial
-import time
-from time import time
 import re
-
-# data structures
-import queue
 
 # Important constants for Serial comm
 COM_PORT = "COM3"
@@ -37,231 +30,14 @@ BAUD_RATE = 57600
 
 #TODO extract static functions into utils class
 
-###################### Coulwinder Interface stuff ######################
-
-class enceladus_serial_cmd_handler:
-    """enceladus command handler should check if commands are valid and keep track of active commands
-    enceladus commands should pass responsed on to UI and notify callers when commands are finished
-
-    all runtimecode is executed through run function
-    responses are passed on to cmd line handler log function and to command callers"""
-    
-    #TODO #serial remove old cmd_handler if its safe
-    
-    #################  attribute types  #####################
-    # reactive variables
-    _datarate_in:        int
-    def _set_datarate(self, rate:int):
-        self._datarate_in = rate
-        self.w
-    _datarate_out:       int
-    _send_queue_level:   float
-    _port:               str
-    _baudrate:           int
-    _port_open:          bool
-    
-    
-    
-    """ the currently active command"""
-    active_command = {
-        "name":None,
-        "finished":True,
-        "error":False,
-        "response":None
-    }
-    
-    """ allowed commands"""
-    allowed_commands = ["whoareyou","gotorelrev","gotorel","abort","disableidlecurrent","getpos"]
-    allowed_scripts = ["script simple winding"]
-    
-    """ command responses which indicate that a command is finished
-
-    Returns:
-        _type_: string
-    """
-    cmd_finished_responses = {
-        "whoareyou":"FrankensteinsGemueseGarten_0v0",
-        "gotorelrev":"DONE",
-        "gotorel":"DONE",
-        "abort":"Aborting movement!",
-        "disableidlecurrent":"Idle Current Disabled!",
-        "getpos":"Current position:"
-    }
-
-    script_handler = None
-    script_mode = False
-
-    def __init__(self,widget:EnceladusSerialWidget, ui: CMDInterface, com_port:str, baudrate:int = 57600):
-        """Creates new instance of the Enceladus command handler
-
-        Args:
-            gui (cmd_interface): the user interface class implementing .add_ext_line_to_log(line)
-            port (str): COM Port descriptive name (eg. COM3)
-            baudrate (int): Baudrate of serial connection
-        """
-        # ui widget
-        
-        # reactive variables
-        self._datarate_in = 0
-        self._datarate_out = 0
-        self._send_queue_level = 0.0
-        self._port = com_port
-        self._baudrate = baudrate
-        self._port_open = False
-        
-        # Serial port stuff
-        self._conn = serial.Serial(port=self._port, baudrate=self._baudrate)
-
-        # gui related stuff
-        self._ui = ui
-
-        # last preperations
-        #self._reset_arduino_and_input_buffer_()
-    
-
-
-
-
-
-
-
-
-class coilwinder_machine_script:
-    """
-    this handler should block manual commands in script mode
-    this handler should be a hardware firewall by keeping track of machine bounds
-    and blocking physically unsafe commands
-
-    Returns:
-        _type_: _description_
-
-    Yields:
-        _type_: _description_
-    """
-    
-    #TODO #scripting move machine script to a widget
-    #TODO #scripting use new easier command tracking to advance script
-    #TODO #scripting create initialization\calibration scripts
-    #TODO #scripting write the simple coil winding script
-    #TODO #scripting #measurementFiles add script phase logging
-    
-    # interface handler
-    serial_handler = None
-    
-    # machine bounds:
-    lim_pos_up = None
-    lim_pos_low = None
-    lim_vel_up = 200
-    lim_vel_down = 0
-    lim_accel_up = 100
-    lim_accel_down = 0
-    K_xy = 15
-    
-    # current Machine parameters (vectors for both axis)
-    current_pos = [None,None]
-    target_pos = [0,0]
-    paused_pos = [0,0]
-    currentOn = False
-    measurementOn = False
-
-    # Coil parameters
-    coil_limit_sec_up = 80000
-    coil_limit_sec_low = 0
-
-    # behavioral stuff
-    script_mode = False
-    script_state = "unconnected"
-    
-    def __init__(self, enceladus:enceladus_serial_cmd_handler,ui: CMDInterface):
-
-        # importatant class references
-        self.serial_handler = enceladus
-        self.ui = ui
-
-        # state variables
-        ## unconnected state
-        self.sent_whoareyou = False
-        self.received_name = False
-        ## position request state
-        self.sent_pos_req = False
-        self.received_pos_resp = False
-        ## limit setting
-        self.limits_set = False
-
-    async def run_script(self):
-        #print("run script")
-        await self.simple_winding()
-    
-    async def simple_winding(self):
-        match self.script_state:
-            case "unconnected":
-                # check if machine is responsive
-                if not self.sent_whoareyou:
-                    succ = self.serial_handler.try_enceladus_command("whoareyou")
-                    if succ == "sent successfully":
-                        self.sent_whoareyou = True
-                        await self._script_log_("connection test started")
-                
-                else:
-                    if self.serial_handler.active_command["finished"]:
-                        self.received_name = True
-                        await self._script_log_("connection test successfull, enter position request")
-                        self.script_state = "position_request"
-
-
-
-            case "position_request":
-                # get current position
-                if not self.sent_pos_req:
-                    succ = self.serial_handler.try_enceladus_command("getpos")
-                    if succ == "sent successfully":
-                        self.sent_pos_req = True
-                        await self._script_log_("sent position request")
-                
-                else:
-                    if self.serial_handler.active_command["finished"]:
-                        self.received_pos_resp = True
-                        (self.current_pos[0],self.current_pos[1]) = self.parse_pos_resp(self.serial_handler.active_command["response"])
-                        await self._script_log_("pos received as "+str(self.current_pos)+ ", enter limit setting")
-                        self.script_state = "limit_setting"
-
-            case "limit_setting":
-                # set speed, acceleration and position limits
-                if not self.limits_set:
-                    await self._script_log_("entered limit setting")
-                    self.limits_set = True
-                    self.script_state = "finished"
-
-            #case "not_on_start_pos":
-                # drive to starting position
-            case "finished":
-                status = self.serial_handler.exit_script_mode("finished")
-                await self._script_log_(status)
-
-            case _:
-                await self._script_log_("unknown status: "+self.script_state)
-    
-    def parse_pos_resp(self,response:str)->tuple:
-        words = response.split(' ')
-        pos1 = int(words[2].strip(" \r\n"))
-        pos2 = int(words[3].strip(" \r\n"))
-        return (pos1,pos2)
-
-    async def _script_log_(self, log:str):
-        self.ui.post_message(CMDInterface.UILog("script: "+log))
-        #await self.ui.add_ext_line_to_log("script: "+log)
-
-
-
-        
-
-
-    
-    
-    
+#TODO #scripting move machine script to a widget
+#TODO #scripting use new easier command tracking to advance script
+#TODO #scripting create initialization\calibration scripts
+#TODO #scripting write the simple coil winding script
+#TODO #scripting #measurementFiles add script phase logging
+#TODO #serial remove old cmd_handler if its safe
 
 ########### Command Line User Interface stuff ##############
-#class EnceldausAutomationScriptWidget(Widget):
 
 class EnceladusSerialWidget(Widget):
     """
@@ -341,8 +117,9 @@ class EnceladusSerialWidget(Widget):
     coilwinder_script = False
     
     
-    def __init__(self, parent:CMDInterface,meas_filequeue:queue,*args, **kwargs):
+    def __init__(self, parent:CMDInterface,send_cmd_queue:Queue,meas_filequeue:Queue,*args, **kwargs):
         self._cmd_interface = parent
+        self._send_cmd_queue = send_cmd_queue
         self._measurement_file_queue = meas_filequeue
         super().__init__(*args, **kwargs)
     
@@ -351,9 +128,17 @@ class EnceladusSerialWidget(Widget):
             """
             async runtime code read from serial buffer
             """
-            await self._read_next_line_()
-            if self.coilwinder_script and self.script_handler is not None:
-                await self.script_handler.run_script()
+            await self._read_next_line_()   # check for new messages from serial 
+            
+            try:
+                cmd = self._send_cmd_queue.get_nowait() # check for new commands from ui
+                print("really got command")
+                self.post_message(CMDInterface.UILog(self.try_enceladus_command(cmd)))
+            except QueueEmpty:
+                pass
+                
+            #if self.coilwinder_script and self.script_handler is not None:
+            #    await self.script_handler.run_script()
             
             await asyncio.sleep(0.001)  # Mock async functionality
             
@@ -404,15 +189,13 @@ script_mode: {}
         name = self._extract_cmd_name_(cmd)
         #print("try command")
         
-        if((name == "abort") or ((name is not None) and (name in self.allowed_commands))): #check if command allowed
+        if((name is not None) and (name in self.allowed_commands)): #check if command allowed
             self.active_command["name"] = name
             self.active_command["finished"] = False
             self.active_command["error"] = False
             self.active_command["response"] = None
             self._send_cmd_(cmd)
             return "sent successfully"
-        elif (name is not None and cmd in self.allowed_scripts):
-            return self.enter_script_mode(cmd)
         else:
             return "command not allowed"
     
@@ -503,7 +286,7 @@ class FileIOTaskWidget(Widget):
     params_file_handle:AiofilesContextManager
     params_filename:str = "para_xxx.csv"
     
-    def __init__(self, parent:CMDInterface,meas_filequeue:queue,*args, **kwargs):
+    def __init__(self, parent:CMDInterface,meas_filequeue:Queue,*args, **kwargs):
         self._cmd_interface = parent
         
         self._measurements_queue = meas_filequeue
@@ -573,14 +356,128 @@ class FileIOTaskWidget(Widget):
     
     
 class MachineScriptsWidget(Widget):
-    def __init__(self, parent:CMDInterface,ui_cmd_queue:queue,*args, **kwargs):
+    
+    script_mode = reactive(False)
+    script_name = reactive(str)
+    script_state = reactive("unconnected")
+    
+    allowed_scripts = ["script simple winding"]
+    
+    
+    def __init__(self,
+                 parent:CMDInterface,
+                 ui_cmd_queue:Queue,
+                 command_responses_queue:Queue,
+                 command_send_queue:Queue,
+                 *args, **kwargs):
         self._cmd_interface = parent
-        self._ui_cmd_queue
+        self._ui_cmd_queue = ui_cmd_queue
+        self._command_responses_queue = command_responses_queue
+        self._command_send_queue = command_send_queue
+        
+        self._serial_widget:EnceladusSerialWidget = None
+        
+        # state variables #TODO: move to script container class
+        ## positional variables
+        self.current_pos = [0,0]
+        ## unconnected state
+        self.sent_whoareyou = False
+        self.received_name = False
+        ## position request state
+        self.sent_pos_req = False
+        self.received_pos_resp = False
+        ## limit setting
+        self.limits_set = False
         
         super().__init__(*args, **kwargs)
-
-
+        
     
+    async def set_serial_widget(self, serial:EnceladusSerialWidget):
+        self._serial_widget = serial
+        
+    def render(self) -> Align:
+        text = """script mode: {}, name: {}, state: {}""".format(
+                self.script_mode,
+                self.script_name,
+                self.script_state)
+        return Align.left(text, vertical="top")
+    
+    async def on_mount(self):
+        asyncio.create_task(self.command_executor())
+    
+    async def command_executor(self):
+        while True:
+            await asyncio.sleep(1) #placeholder code
+            if self.script_mode:
+                match self.script_name:
+                    case "script simple winding":
+                        await self.simple_winding() # TODO: use script container class instead
+            else:
+                cmd = await self._ui_cmd_queue.get()
+                if (cmd is not None) and (cmd in self.allowed_scripts):
+                    self.script_mode = True
+                    self.script_name = cmd
+                else:
+                    await self._command_send_queue.put(cmd)
+                
+    async def simple_winding(self): # move this to script container classes
+        match self.script_state:
+            case "unconnected":
+                # check if machine is responsive
+                if not self.sent_whoareyou:
+                    await self._command_send_queue.put("whoareyou")
+                    self.sent_whoareyou = True
+                    self.post_message(CMDInterface.UILog("script: connection test started"))
+                
+                else:
+                    if self._serial_widget.active_command["finished"]:
+                        self.received_name = True
+                        self.post_message(CMDInterface.UILog("script:"+"connection test successfull, enter position request"))
+                        self.script_state = "position_request"
+
+
+            case "position_request":
+                # get current position
+                if not self.sent_pos_req:
+                    await self._command_send_queue.put("getpos")
+                    self.sent_pos_req = True
+                    self.post_message(CMDInterface.UILog("script:"+"sent position request"))
+                
+                else:
+                    if self._serial_widget.active_command["finished"]:
+                        self.received_pos_resp = True
+                        (self.current_pos[0],self.current_pos[1]) = self.parse_pos_resp(self._serial_widget.active_command["response"])
+                        self.post_message(CMDInterface.UILog("script:"+"pos received as "+str(self.current_pos)+ ", enter limit setting"))
+                        self.script_state = "limit_setting"
+
+
+            case "limit_setting":
+                # set speed, acceleration and position limits
+                if not self.limits_set:
+                    self.post_message(CMDInterface.UILog("script:"+"entered limit setting"))
+                    self.limits_set = True
+                    self.script_state = "finished"
+
+            #case "not_on_start_pos":
+                # drive to starting position
+            case "finished":
+                #status = self.serial_handler.exit_script_mode("finished")
+                self.post_message(CMDInterface.UILog("script:"+self.script_state))
+                self.script_mode = False
+                self.script_name = ""
+                self.script_state = "unconnected"
+
+            case _:
+                self.post_message(CMDInterface.UILog("script:"+"unknown status: "+self.script_state))
+    
+    def parse_pos_resp(self,response:str)->tuple:
+        words = response.split(' ')
+        pos1 = int(words[2].strip(" \r\n"))
+        pos2 = int(words[3].strip(" \r\n"))
+        return (pos1,pos2)
+
+
+
 class CMDInterface(App):
     CSS = """
     Static {
@@ -612,14 +509,22 @@ class CMDInterface(App):
         Binding(key="enter",action="submit",description="submit cmd")
     ]
     
-    _measurements_filewrite_queue:Queue = None
+    #queues
+    #TODO: move queue generation to another place
+    _measurements_filewrite_queue:  Queue = None
+    _ui_cmd_queue:                  Queue = None
+    _command_responses_queue:       Queue = None
+    _command_send_queue:            Queue = None
     
     def __init__(self, *args, **kwargs):
         """constructor is only used to instantiate the queue
         this must be changed later
         """
-        #TODO: move queue generation to another place
-        self._measurements_filewrite_queue = Queue(0)
+        self._measurements_filewrite_queue  = Queue(0)
+        self._ui_cmd_queue                  = Queue(0)
+        self._command_responses_queue       = Queue(0)
+        self._command_send_queue            = Queue(0)
+        
         super().__init__(*args, **kwargs)
     
     def compose(self) -> ComposeResult:
@@ -630,8 +535,9 @@ class CMDInterface(App):
             Horizontal(
                 TextLog(id="output",highlight=True,markup=True,classes = "box"),
                 ScrollableContainer(
-                    EnceladusSerialWidget(parent=self,meas_filequeue=self._measurements_filewrite_queue,classes = "box"),
+                    EnceladusSerialWidget(parent=self,send_cmd_queue=self._command_send_queue, meas_filequeue=self._measurements_filewrite_queue,classes = "box"),
                     FileIOTaskWidget(parent=self,meas_filequeue=self._measurements_filewrite_queue,classes = "box"),
+                    MachineScriptsWidget(parent=self,ui_cmd_queue=self._ui_cmd_queue,command_responses_queue=self._command_responses_queue,command_send_queue=self._command_send_queue,classes="box"),
                     id="right-vert"
                 ),
                 classes="horizontal"
@@ -645,10 +551,18 @@ class CMDInterface(App):
         self.post_message(CMDInterface.UILog(event.value))
         event.input.value = ""
         
-        enc_ser_widget = self.query_one(EnceladusSerialWidget)
+        #enc_ser_widget = self.query_one(EnceladusSerialWidget)
             
-        ret = enc_ser_widget.try_enceladus_command(event.value)
-        self.post_message(CMDInterface.UILog(ret))
+        #ret = enc_ser_widget.try_enceladus_command(event.value)
+        await self._ui_cmd_queue.put(event.value)
+        #self.post_message(CMDInterface.UILog(ret))
+    
+    @on(Ready)
+    async def handle_ready(self, event:Ready)->None:
+        print("on ready event")
+        serial_widget = self.query_one(EnceladusSerialWidget)
+        script_widget = self.query_one(MachineScriptsWidget)
+        await script_widget.set_serial_widget(serial_widget)
     
     class UILog(Message):
         """Message Class for messages which need to be displayed in
