@@ -20,8 +20,7 @@ from textual.widget import Widget
 from textual.widgets import Footer, Header, TextLog, Input, Static
 from textual.containers import Horizontal, Vertical, ScrollableContainer
 from textual.reactive import reactive
-if TYPE_CHECKING:
-    from textual.message import Message
+from textual.message import Message
 
 # serial connection
 import serial
@@ -36,6 +35,7 @@ import queue
 COM_PORT = "COM3"
 BAUD_RATE = 57600
 
+#TODO extract static functions into utils class
 
 ###################### Coulwinder Interface stuff ######################
 
@@ -45,6 +45,8 @@ class enceladus_serial_cmd_handler:
 
     all runtimecode is executed through run function
     responses are passed on to cmd line handler log function and to command callers"""
+    
+    #TODO #serial remove old cmd_handler if its safe
     
     #################  attribute types  #####################
     # reactive variables
@@ -89,7 +91,7 @@ class enceladus_serial_cmd_handler:
     script_handler = None
     script_mode = False
 
-    def __init__(self,widget:EnceladusSerialWidget, ui: CMD_Interface, com_port:str, baudrate:int = 57600):
+    def __init__(self,widget:EnceladusSerialWidget, ui: CMDInterface, com_port:str, baudrate:int = 57600):
         """Creates new instance of the Enceladus command handler
 
         Args:
@@ -137,6 +139,12 @@ class coilwinder_machine_script:
         _type_: _description_
     """
     
+    #TODO #scripting move machine script to a widget
+    #TODO #scripting use new easier command tracking to advance script
+    #TODO #scripting create initialization\calibration scripts
+    #TODO #scripting write the simple coil winding script
+    #TODO #scripting #measurementFiles add script phase logging
+    
     # interface handler
     serial_handler = None
     
@@ -164,7 +172,7 @@ class coilwinder_machine_script:
     script_mode = False
     script_state = "unconnected"
     
-    def __init__(self, enceladus:enceladus_serial_cmd_handler,ui: CMD_Interface):
+    def __init__(self, enceladus:enceladus_serial_cmd_handler,ui: CMDInterface):
 
         # importatant class references
         self.serial_handler = enceladus
@@ -240,7 +248,8 @@ class coilwinder_machine_script:
         return (pos1,pos2)
 
     async def _script_log_(self, log:str):
-        await self.ui.add_ext_line_to_log("script: "+log)
+        self.ui.post_message(CMDInterface.UILog("script: "+log))
+        #await self.ui.add_ext_line_to_log("script: "+log)
 
 
 
@@ -260,8 +269,7 @@ class EnceladusSerialWidget(Widget):
     handling serial interface to enceladus and autonomos controll of
     the coilwinder
     """
-    #scripty : coilwinder_machine_script | None=None
-    #coilwinder_machine_script(scripty).
+    #TODO #serial finish serial interface
     
     # reactives
     datarate_in = reactive(0)
@@ -275,6 +283,10 @@ class EnceladusSerialWidget(Widget):
     _conn: serial.Serial
     
     # command tracking stuff
+    
+    #TODO #serial #scripting make command tracking easier
+    #TODO #serial add missing calibration, settings, control commands and measurement packets
+    
     """ the currently active command"""
     active_command = {
         "name":None,
@@ -329,7 +341,7 @@ class EnceladusSerialWidget(Widget):
     coilwinder_script = False
     
     
-    def __init__(self, parent:CMD_Interface,meas_filequeue:queue,*args, **kwargs):
+    def __init__(self, parent:CMDInterface,meas_filequeue:queue,*args, **kwargs):
         self._cmd_interface = parent
         self._measurement_file_queue = meas_filequeue
         super().__init__(*args, **kwargs)
@@ -423,7 +435,8 @@ script_mode: {}
             #print(line)
             data = line.replace("\\r\\n\'","").replace("b\'","")
 
-            await self._cmd_interface.add_ext_line_to_log(data)
+            #await self._cmd_interface.add_ext_line_to_log(data)
+            self.post_message(CMDInterface.UILog(data))
             await self._measurement_file_queue.put(data)
             print("put data in queue")
 
@@ -433,7 +446,8 @@ script_mode: {}
 
                     self.active_command["finished"] = True
                     self.active_command["response"] = data
-                    await self._cmd_interface.add_ext_line_to_log("cmd: \""+self.active_command["name"]+"\" finished")
+                    #await self._cmd_interface.add_ext_line_to_log("cmd: \""+self.active_command["name"]+"\" finished")
+                    self.post_message(CMDInterface.UILog("cmd: \""+self.active_command["name"]+"\" finished"))
     
     def _send_cmd_(self, cmd:str):
         """actually sending the command
@@ -465,6 +479,10 @@ script_mode: {}
 
 
 class FileIOTaskWidget(Widget):
+    #TODO #measurementFiles refactor for more structure
+    #TODO #measurementFiles finish parameter file
+    #TODO #measurementFiles #scripting add script phase logging
+    
     write_queue_fulliness = reactive(float)
     #directory_name = reactive(str)
     filenames = reactive(list[str])
@@ -485,7 +503,7 @@ class FileIOTaskWidget(Widget):
     params_file_handle:AiofilesContextManager
     params_filename:str = "para_xxx.csv"
     
-    def __init__(self, parent:CMD_Interface,meas_filequeue:queue,*args, **kwargs):
+    def __init__(self, parent:CMDInterface,meas_filequeue:queue,*args, **kwargs):
         self._cmd_interface = parent
         
         self._measurements_queue = meas_filequeue
@@ -554,22 +572,16 @@ class FileIOTaskWidget(Widget):
         
     
     
-            
-class InputValidator(Validator):  
-    def validate(self, value: str) -> ValidationResult:
-        """Check a string is equal to its reverse."""
-        if self.is_valid(value):
-            return self.success()
-        else:
-            return self.failure("Not valid :/")
-
-    @staticmethod
-    def is_valid(value: str) -> bool:
-        return value != "not valid"
+class MachineScriptsWidget(Widget):
+    def __init__(self, parent:CMDInterface,ui_cmd_queue:queue,*args, **kwargs):
+        self._cmd_interface = parent
+        self._ui_cmd_queue
+        
+        super().__init__(*args, **kwargs)
 
 
     
-class CMD_Interface(App):
+class CMDInterface(App):
     CSS = """
     Static {
         border: solid green;
@@ -597,88 +609,66 @@ class CMD_Interface(App):
     
     BINDINGS = [
         Binding(key="q",action="quit",description="Quit the App"),
-        Binding(key="i",action="focus_input",description="focus cmd input"),
-        Binding(key="enter",action="submit",description="submit cmd"),
-        Binding(key="l",action="focus_log",description="focus textlog"),
-        Binding(key="tab",action="reset_focus",description="unfocus")
+        Binding(key="enter",action="submit",description="submit cmd")
     ]
-    
     
     _measurements_filewrite_queue:Queue = None
     
     def __init__(self, *args, **kwargs):
+        """constructor is only used to instantiate the queue
+        this must be changed later
+        """
+        #TODO: move queue generation to another place
         self._measurements_filewrite_queue = Queue(0)
-        
         super().__init__(*args, **kwargs)
     
     def compose(self) -> ComposeResult:
-        #generating widged instances
+        """creates graphical structure of the CMDInterface and instantiates the Widgets"""
         yield Header(show_clock=True, name="Enceladus interface Coilwinder")
         yield Footer()
         yield Vertical(
             Horizontal(
                 TextLog(id="output",highlight=True,markup=True,classes = "box"),
                 ScrollableContainer(
-                    #Static("One"),
-                    #Static("Two"),
                     EnceladusSerialWidget(parent=self,meas_filequeue=self._measurements_filewrite_queue,classes = "box"),
                     FileIOTaskWidget(parent=self,meas_filequeue=self._measurements_filewrite_queue,classes = "box"),
                     id="right-vert"
                 ),
                 classes="horizontal"
             ),
-            Input(id="input",placeholder="Enter cmd...",classes = "box",validators=[InputValidator()]),
+            Input(id="input",placeholder="Enter cmd...",classes = "box"),
         )
-        #print("Textlog yielded")
     
     @on(Input.Submitted)
     async def handle_cmd_input(self, event: Input.Submitted) -> None:
         """called when text was typed into cmd input and then enter was pressed"""
-        text_input = event.input
-        await self._add_line_to_log_(event.value)
-        text_input.value = ""
+        self.post_message(CMDInterface.UILog(event.value))
+        event.input.value = ""
         
         enc_ser_widget = self.query_one(EnceladusSerialWidget)
             
         ret = enc_ser_widget.try_enceladus_command(event.value)
-        await self._add_line_to_log_(ret)
+        self.post_message(CMDInterface.UILog(ret))
     
-    async def action_focus_input(self)->None:
-        cmd_input = self.query_one(Input)
-        cmd_input.focus()
-        return
+    class UILog(Message):
+        """Message Class for messages which need to be displayed in
+        User interface TextLog widget
+        
+        call (from anywhere):
+        self.post_message(CMDInterface.UILog(message:str))
+        """
+        def __init__(self, msg:str) -> None:
+            self.msg = msg
+            super().__init__()
     
-    async def action_focus_log(self)->None:
-        #print("Textlog needed")
-        textlog = self.query_one(TextLog)
-        textlog.focus()
-        return
-    
-    async def action_reset_focus(self) -> None:
-        header = self.query_one(Header)
-        header.focus()
-        return
-    
-    async def action_submit(self) -> None:
-        #do submit
-        return
-
-    async def _add_line_to_log_(self,new_line:str) -> None:
-        #print("Textlog needed")
-        textlog = self.query_one(TextLog)
-        #await self.log(new_line)
-        #print("needed textlog")
-        textlog.write(new_line)
-
-    async def add_ext_line_to_log(self,new_line:str) -> None:
-        #print("Textlog needed")
-        textlog = self.query_one(TextLog)
-        #await self.log(new_line)
-        #print("needed textlog")
-        textlog.write(new_line)
+    def on_cmdinterface_uilog(self, message: CMDInterface.UILog)-> None:
+        """gets called when a UILog Message is postet
+        """
+        print("got message")
+        self.query_one(TextLog).write(message.msg)
 
 
 
 if __name__ == "__main__":
-    app = CMD_Interface()
+    app = CMDInterface()
     app.run()
