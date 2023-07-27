@@ -132,6 +132,7 @@ class EnceladusSerialWidget(Widget):
             
             try:
                 cmd = self._send_cmd_queue.get_nowait() # check for new commands from ui
+                
                 #TODO: #Martin zum testen kannst du messdaten nachrichten aus ui queue nehmen und in measurements queue schreiben
                 # somit kannst du aus dem ui fake serial responses schreiben
                 
