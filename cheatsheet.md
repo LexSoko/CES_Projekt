@@ -113,4 +113,19 @@ run snakeviz
 2. in einem zweiten terminal unsere app im dev mode starten:
 ```console
 > textual run --dev .\code_python\enceladus\winder_enceladus_interface.py
-`````
+```
+## für martin in powershell:
+1. öffne ERSTES POWERSHELL FENSTER und gib folgende commands ein:
+```console
+> cd <path to CES_Projekt>\CES_Projekt
+> conda activate ces-mma
+> textual console
+```
+wenn textual console rennt kannst du mit STRG+F im log nach text suchen
+
+1. öffne ZWEITES POWERSHELL FENSTER und gib folgende commands ein:
+```console
+> cd <path to CES_Projekt>\CES_Projekt
+> conda activate ces-mma
+> textual run --dev .\code_python\enceladus\winder_enceladus_interface.py
+```
