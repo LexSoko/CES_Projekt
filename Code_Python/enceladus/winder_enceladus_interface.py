@@ -115,12 +115,14 @@ class EnceladusSerialWidget(Widget):
     
     script_handler = None
     coilwinder_script = False
+    com_port_exists:bool = False
     
     
     def __init__(self, parent:CMDInterface,send_cmd_queue:Queue,meas_filequeue:Queue,*args, **kwargs):
         self._cmd_interface = parent
         self._send_cmd_queue = send_cmd_queue
         self._measurement_file_queue = meas_filequeue
+        self.com_port_exists = False
         super().__init__(*args, **kwargs)
     
     async def async_functionality(self):
@@ -133,10 +135,11 @@ class EnceladusSerialWidget(Widget):
             try:
                 cmd = self._send_cmd_queue.get_nowait() # check for new commands from ui
                 
+                print("really got command")
+                print(cmd)
                 #TODO: #Martin zum testen kannst du messdaten nachrichten aus ui queue nehmen und in measurements queue schreiben
                 # somit kannst du aus dem ui fake serial responses schreiben
                 
-                print("really got command")
                 self.post_message(CMDInterface.UILog(self.try_enceladus_command(cmd)))
             except QueueEmpty:
                 pass
@@ -174,9 +177,13 @@ script_mode: {}
     
     async def on_mount(self):
         # get backend instance
-        self._conn = serial.Serial(port=self.port, baudrate=self.baudrate)
-        await self._reset_arduino_and_input_buffer_()
-        
+        try:
+            self._conn = serial.Serial(port=self.port, baudrate=self.baudrate)
+            self.com_port_exists = True
+            await self._reset_arduino_and_input_buffer_()
+        except serial.SerialException:
+            # manage no COM port
+            self.com_port_exists = False
         # start the async repetitive serial handler
         asyncio.create_task(self.async_functionality())
 
@@ -198,7 +205,8 @@ script_mode: {}
             self.active_command["finished"] = False
             self.active_command["error"] = False
             self.active_command["response"] = None
-            self._send_cmd_(cmd)
+            if self.com_port_exists:
+                self._send_cmd_(cmd)
             return "sent successfully"
         else:
             return "command not allowed"
@@ -216,7 +224,7 @@ script_mode: {}
     async def _read_next_line_(self):
         """read next line from serial buffer
         """
-        while (self._conn.in_waiting != 0):
+        while (self.com_port_exists and self._conn.in_waiting != 0):
             line = str(self._conn.readline())
             #print("here baby")
             #print(line)
