@@ -103,3 +103,14 @@ run snakeviz
 ```console
 >  snakeviz <script_name>.prof
 ```
+
+# textual setup
+1. conda environment updaten
+2. in einem terminal development console starten:
+```console
+> textual console
+```
+2. in einem zweiten terminal unsere app im dev mode starten:
+```console
+> textual run --dev .\code_python\enceladus\winder_enceladus_interface.py
+`````
