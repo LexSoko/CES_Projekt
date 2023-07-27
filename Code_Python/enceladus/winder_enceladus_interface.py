@@ -244,14 +244,14 @@ class EnceladusSerialWidget(Widget):
             
             try:
                 cmd = self._send_cmd_queue.get_nowait() # check for new commands from ui
-                if (type(cmd) is CommandFactory.StandardCommand):
-                    print("ser: got command with right type")
-                    self.active_cmds.append(cmd)
-                    self.post_message(CMDInterface.UILog(self.try_enceladus_command(str(cmd.full_cmd))))
-                    cmd.got_sent()
-                
-                print("really got command:"+str(cmd))
-                
+                #if (type(cmd) is CommandFactory.StandardCommand):
+                #    print("ser: got command with right type")
+                #    self.active_cmds.append(cmd)
+                #    self.post_message(CMDInterface.UILog(self.try_enceladus_command(str(cmd.full_cmd))))
+                #    cmd.got_sent()
+                if(not await self.check_if_cmd_and_handle(cmd)):
+                    print("really got command")
+                    print(cmd)
                 #TODO: #Martin zum testen kannst du messdaten nachrichten aus ui queue nehmen und in measurements queue schreiben
                 # somit kannst du aus dem ui fake serial responses schreiben
                 
@@ -387,26 +387,30 @@ script_mode: {}
                     #await self._cmd_interface.add_ext_line_to_log(data)
                     #self.post_message(CMDInterface.UILog(data))
 
-                #await self._cmd_interface.add_ext_line_to_log(data)
-                for cmd in self.active_cmds:
-                    if data in cmd.response_keys:
-                        print("sereadline: commandresponse received:"+str(cmd))
-                        cmd.got_received(data)
-                        self.active_cmds.remove(cmd)
+            #await self._cmd_interface.add_ext_line_to_log(data)
+            # ok keine messdaten, muss commandresponse oder fehler sein
+            
+            #for cmd in self.active_cmds:
+            #    if data in cmd.response_keys:
+            #        print("sereadline: commandresponse received:"+str(cmd))
+            #        cmd.got_received(data)
+            #        self.active_cmds.remove(cmd)
+                if(not await self.check_if_cmd_resp_and_handle(data)):
+                    #ok this must be an error
+                    self.post_message(CMDInterface.UILog("ser: got: "+str(data)))
                     
             #self.post_message(CMDInterface.UILog(data))
             #await self._measurement_file_queue.put(data)
             #print("put data in queue")
 
-            if(not self.active_command["finished"]):
-                if(self.cmd_finished_responses[self.active_command["name"]] in data):
-                    # we got response from a currently active command
-
-                        self.active_command["finished"] = True
-                        self.active_command["response"] = data
-                        #await self._cmd_interface.add_ext_line_to_log("cmd: \""+self.active_command["name"]+"\" finished")
-                        self.post_message(CMDInterface.UILog("cmd: \""+self.active_command["name"]+"\" finished"))
-            #MSH end
+            #if(not self.active_command["finished"]):
+            #    if(self.cmd_finished_responses[self.active_command["name"]] in data):
+            #        # we got response from a currently active command
+            #
+            #        self.active_command["finished"] = True
+            #        self.active_command["response"] = data
+            #        #await self._cmd_interface.add_ext_line_to_log("cmd: \""+self.active_command["name"]+"\" finished")
+            #        self.post_message(CMDInterface.UILog("cmd: \""+self.active_command["name"]+"\" finished"))
     
     def _send_cmd_(self, cmd:str):
         """actually sending the command
@@ -434,6 +438,29 @@ script_mode: {}
         await asyncio.sleep(1)
         self._conn.flushInput()
         self._conn.setDTR(True)
+    
+    async def check_if_cmd_resp_and_handle(self, data)->bool:
+        for cmd in self.active_cmds:
+            if any([key in data for key in cmd.response_keys]):
+                print("sereadline: commandresponse received:"+str(cmd))
+                cmd.got_received(data)
+                self.active_cmds.remove(cmd)
+                return True
+        
+        return False
+    
+    async def check_if_cmd_and_handle(self,cmd)->bool:
+        if (type(cmd) is CommandFactory.StandardCommand):
+            print("ser: got command with right type")
+            self.active_cmds.append(cmd)
+            self._send_cmd_(cmd.full_cmd)
+            self.post_message(CMDInterface.UILog("ser:sent:"+cmd.full_cmd))
+            #self.post_message(CMDInterface.UILog(self._send_cmd_(cmd.full_cmd)))
+            #self.post_message(CMDInterface.UILog(self._send_cmd_("here")))
+            cmd.got_sent()
+            return True
+        
+        return False
 
 
 
@@ -613,10 +640,10 @@ class MachineScriptsWidget(Widget):
                 
                 status = await cmd_obj.wait_on_response()
                 print("cmd_ex got response:"+status)
-                self.post_message(CMDInterface.UILog("command_executor: "+cmd+" finished, response: "+cmd_obj.response_msg))
+                self.post_message(CMDInterface.UILog("command_executor: "+cmd+"-response: "+cmd_obj.response_msg))
                     
                 #if (cmd is not None) and (cmd in self.allowed_scripts):
-                #    self.script_mode = True
+                #    self.script_mode = True    
                 #    self.script_name = cmd
                 #else:
                 #    await self._command_send_queue.put(cmd)
