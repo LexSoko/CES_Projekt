@@ -1,9 +1,11 @@
 from __future__ import annotations
+from abc import ABC, abstractmethod
 import os
 
 # imports for asyncronous task
 import asyncio
 from asyncio import Queue, QueueEmpty
+from typing import Dict, List
 import aiofiles
 from aiofiles.base import AiofilesContextManager
 from datetime import datetime
@@ -37,6 +39,101 @@ BAUD_RATE = 57600
 #TODO #scripting #measurementFiles add script phase logging
 #TODO #serial remove old cmd_handler if its safe
 
+########### datastructures and object factories ############
+class Singleton(object):
+    """Singleton base class.
+    
+    A Singleton is a Object existing only once in programm memory
+    and is statically accessible from anywhere in the code
+    (this is like a global object but cooler)
+    """
+    _instances = {}
+    def __new__(class_, *args, **kwargs):
+        if class_ not in class_._instances:
+            class_._instances[class_] = super(Singleton, class_).__new__(class_, *args, **kwargs)
+        return class_._instances[class_]
+
+class Command(ABC):
+    name:str = ""
+    params:list = []
+    response_keys:list(str) = ""
+    response_msg:str = ""
+    state:str = "None"
+    
+    _possible_states:list(str) = ["created","sent","resp_received","error","finished","novalidator"]
+    
+    def __init__(self,name:str,params:list,response_keys:list(str)) -> None:
+        self.name = name
+        self.params = params
+        self.response_keys = response_keys
+        
+        self.response_msg = ""
+        self.state = "created"
+    
+    def got_sent(self) -> None:
+        self.state = "sent"
+    
+    def got_received(self, response_msg:str) -> None:
+        self.response_msg = response_msg
+        self.state = "received"
+    
+    async def wait_on_response(self) -> str:
+        while not self.state == "resp_received":
+            await asyncio.sleep(1)
+        
+        return self.validate_cmd()
+    
+    @abstractmethod
+    def validate_cmd(self)->str:
+        return "novalidator"
+        
+class CommandFactory(Singleton):
+    """ allowed commands"""
+    allowed_commands:List[str] = [
+        "whoareyou","gotorelrev","gotorel","abort","disableidlecurrent",
+        "getpos","loadcellav","loadcellraw","loadcellstart","loadcellstop"
+        ]
+    cmd_response_keys:Dict[str,List[str]] = {
+        "whoareyou"         :["FrankensteinsGemueseGarten_0v0"],
+        "gotorelrev"        :["DONE"],
+        "gotorel"           :["DONE"],
+        "abort"             :["Aborting movement!"],
+        "disableidlecurrent":["Idle Current Disabled!"],
+        "getpos"            :["Current position:"],
+        "loadcellav"        :["loadcellAverage:"],
+        "loadcellraw"       :["loadcellRaw:"],
+        "loadcellstart"     :["measurement start!"],
+        "loadcellstop"      :["measurement end!"],
+    }
+    
+    class StandardCommand(Command):
+        def validate_cmd(self) -> str:
+            if any(self.response_keys in self.response_msg):
+                return "finished"
+            else:
+                return "error"
+    
+    def createStandardCommand(cmd:str) -> StandardCommand:
+        # check if cmd contains valid cmd key:
+        keys_in_cmd = [key for key in CommandFactory.cmd_response_keys.keys() if key in cmd]
+        
+        if len(keys_in_cmd) == 0:
+            return None
+        
+        # get right cmd key which is the longest matched command key
+        cmd_key = max(keys_in_cmd)
+        
+        #create and return the command
+        
+        return CommandFactory.StandardCommand(
+            name=cmd_key,
+            params = cmd.replace(cmd_key+" ","").split(" "),
+            response_keys=CommandFactory.cmd_response_keys[cmd_key]
+        )
+            
+            
+    
+    
 ########### Command Line User Interface stuff ##############
 
 class EnceladusSerialWidget(Widget):
