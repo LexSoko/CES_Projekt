@@ -70,9 +70,11 @@ class Command(ABC):
         self.state = "created"
     
     def got_sent(self) -> None:
+        #print(self.name+" got sent")
         self.state = "sent"
     
     def got_received(self, response_msg:str) -> None:
+        #print(self.name+" got received")
         self.response_msg = response_msg
         self.state = "resp_received"
     
@@ -96,7 +98,8 @@ class CommandFactory(Singleton):
     #allowed commands
     allowed_commands:List[str] = [
         "whoareyou","gotorelrev","gotorel","abort","disableidlecurrent",
-        "getpos","loadcellav","loadcellraw","loadcellstart","loadcellstop"
+        "getpos","loadcellav","loadcellraw","loadcellstart","loadcellstop",
+        "goto", "acceleration"
         ]
     
     #allowed command responses
@@ -104,6 +107,7 @@ class CommandFactory(Singleton):
         "whoareyou"         :["FrankensteinsGemueseGarten_0v0"],
         "gotorelrev"        :["DONE"],
         "gotorel"           :["DONE"],
+        "goto"              :["DONE"],
         "abort"             :["Aborting movement!"],
         "disableidlecurrent":["Idle Current Disabled!"],
         "getpos"            :["Current position:"],
@@ -111,13 +115,17 @@ class CommandFactory(Singleton):
         "loadcellraw"       :["loadcellRaw:"],
         "loadcellstart"     :["measurement start!"],
         "loadcellstop"      :["measurement end!"],
+        "acceleration"      :["Setting Acceleration to :"],
+        "motorspeed"        :["Setting motorspeed:"]
     }
     
     class StandardCommand(Command):
         def validate_cmd(self) -> str:
             if any([resp in self.response_msg for resp in self.response_keys]):
+                #print(self.name+" validates finished")
                 return "finished"
             else:
+                #print(self.name+" validates error")
                 return "error"
     
     def createStandardCommand(self,cmd:str) -> StandardCommand:
@@ -186,8 +194,9 @@ class EnceladusSerialWidget(Widget):
                 cmd = self._send_cmd_queue.get_nowait() # check for new commands from ui
 
                 if(not await self.check_if_cmd_and_handle(cmd)):
-                    print("really got command")
-                    print(cmd)
+                    #print("really got command")
+                    #print(cmd)
+                    pass
                 
             #Only for Testing begin
                 #match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", cmd.full_cmd)
@@ -252,8 +261,14 @@ class EnceladusSerialWidget(Widget):
             if(match_obj != None and match_obj.group() != ""):
                 match_obj_str = match_obj.group()
                 await self._measurement_file_queue.put(match_obj_str)
-            else:
-                if(not await self.check_if_cmd_resp_and_handle(data)):
+            elif("Aborting movement!" in data):
+                # abort command was triggered -> mark every command as finished
+                #print("caught abort response")
+                for cmd in self.active_cmds:
+                    #print("ckill cmd:"+cmd.name)
+                    cmd.got_received(data)
+                    self.active_cmds.remove(cmd)
+            elif(not await self.check_if_cmd_resp_and_handle(data)):
                     #ok this must be an error
                     self.post_message(CMDInterface.UILog("ser: got: "+str(data)))
                     
@@ -297,7 +312,7 @@ class EnceladusSerialWidget(Widget):
     
     async def check_if_cmd_and_handle(self,cmd)->bool:
         if (type(cmd) is CommandFactory.StandardCommand):
-            #print("ser: got command with right type")
+            #print("ser: got command with right type:"+cmd.full_cmd)
             self.active_cmds.append(cmd)
             self._send_cmd_(cmd.full_cmd)
             self.post_message(CMDInterface.UILog("ser:sent:"+cmd.full_cmd))
@@ -345,7 +360,7 @@ class FileIOTaskWidget(Widget):
         timestring = FileIOTaskWidget.return_time()
         self.meas_filename = self.meas_filename.replace("xxx",timestring)
         self.params_filename = self.params_filename.replace("xxx",timestring)
-        print("dirname "+self.dirname)
+        #print("dirname "+self.dirname)
         #self.directory_name = self.dirname
         self.filenames.append(self.meas_filename)
         self.filenames.append(self.params_filename)
@@ -372,7 +387,7 @@ class FileIOTaskWidget(Widget):
         return Align.left(text, vertical="top")
     
     async def filewrite_worker(self):
-        print("open file")
+        #print("open file")
         if not os.path.exists(self.dirname):
             os.makedirs(self.dirname)
         
@@ -382,7 +397,7 @@ class FileIOTaskWidget(Widget):
             while True:
                 self.write_queue_fulliness = self._measurements_queue.qsize()
                 data = await self._measurements_queue.get()
-                print("got data from queue")
+                #print("got data from queue")
                 #MSH begin
                 newline = data.rstrip().replace(' ' , ';')
                 #MSH end
@@ -466,31 +481,25 @@ class MachineScriptsWidget(Widget):
     
     async def command_executor(self):
         while True:
-            await asyncio.sleep(1) #placeholder code
+            await asyncio.sleep(0.01) #placeholder code
             if self.script_mode:
                 match self.script_name:
                     case "script simple winding":
                         await self.simple_winding() # TODO: use script container class instead
             else:
                 cmd = await self._ui_cmd_queue.get()
-                print("cmd_ex got command: "+cmd)
+                #print("cmd_ex got command: "+cmd)
                 cmd_obj = CommandFactory().createStandardCommand(cmd)
-                print("cmd_ex built cmd_obj: "+str(cmd_obj))
+                #print("cmd_ex built cmd_obj: "+str(cmd_obj))
                 if cmd_obj is not None:
                     await self._command_send_queue.put(cmd_obj)
-                    print("cmd_ex sent cmd_obj")
+                    #print("cmd_ex sent cmd_obj")
+                    status = await cmd_obj.wait_on_response()
+                    #print("cmd_ex got response:"+status)
+                    self.post_message(CMDInterface.UILog("command_executor: "+str(cmd)+"-response: "+cmd_obj.response_msg))
+                    #print("cmd_ex got response end:")
                 else:
                     self.post_message(CMDInterface.UILog("command_executor: "+cmd+" not a command"))
-                
-                status = await cmd_obj.wait_on_response()
-                print("cmd_ex got response:"+status)
-                self.post_message(CMDInterface.UILog("command_executor: "+cmd+"-response: "+cmd_obj.response_msg))
-                    
-                #if (cmd is not None) and (cmd in self.allowed_scripts):
-                #    self.script_mode = True    
-                #    self.script_name = cmd
-                #else:
-                #    await self._command_send_queue.put(cmd)
                 
     async def simple_winding(self): # move this to script container classes
         match self.script_state:
@@ -588,6 +597,7 @@ class CMDInterface(App):
     _command_responses_queue:       Queue = None
     _command_send_queue:            Queue = None
     
+
     def __init__(self, *args, **kwargs):
         """constructor is only used to instantiate the queue
         this must be changed later
@@ -596,6 +606,7 @@ class CMDInterface(App):
         self._ui_cmd_queue                  = Queue(0)
         self._command_responses_queue       = Queue(0)
         self._command_send_queue            = Queue(0)
+        self.notauscommand = CommandFactory().createStandardCommand("abort")
         
         super().__init__(*args, **kwargs)
     
@@ -623,15 +634,20 @@ class CMDInterface(App):
         self.post_message(CMDInterface.UILog(event.value))
         event.input.value = ""
         
-        #enc_ser_widget = self.query_one(EnceladusSerialWidget)
-            
-        #ret = enc_ser_widget.try_enceladus_command(event.value)
-        await self._ui_cmd_queue.put(event.value)
-        #self.post_message(CMDInterface.UILog(ret))
+        if event.value == "abort":
+            self.post_message(CMDInterface.UILog("not abort"))
+            await self._command_send_queue.put(self.notauscommand)
+            # do not wait for command responses here
+            # i had to search for an error for ca. 2h but only solution was to comment out following two lines
+            #resp = await self.notauscommand.wait_on_response()
+            #self.post_message(CMDInterface.UILog("not abort ausgeführt"))
+        else:
+            await self._ui_cmd_queue.put(event.value)
+            #self.post_message(CMDInterface.UILog(ret))
     
     @on(Ready)
     async def handle_ready(self, event:Ready)->None:
-        print("on ready event")
+        #print("on ready event")
         serial_widget = self.query_one(EnceladusSerialWidget)
         script_widget = self.query_one(MachineScriptsWidget)
         await script_widget.set_serial_widget(serial_widget)

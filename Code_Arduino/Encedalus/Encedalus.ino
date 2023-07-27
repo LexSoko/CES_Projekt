@@ -128,7 +128,7 @@ int Timer1DelayRegisterPreloadValue = 65000;              //
 
 /////////////////////////////////////////// Positioning Variables ///////////////////////////////////////
 int MotorDirection = 0;               // Motordirection = 0 --> Motor to the Left (CCW), Motordirection = 1 --> Motor to the right (clockwise)
-int MaxMotorSpeed = 200;                 // Motorspeed can be between 0 and 1000 --> setting the timer value
+int MaxMotorSpeed = 50;                 // Motorspeed can be between 0 and 1000 --> setting the timer value
 
 // secondary axis variables
 const char K_xy = 15;
