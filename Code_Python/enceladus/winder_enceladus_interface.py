@@ -136,11 +136,20 @@ class EnceladusSerialWidget(Widget):
                 cmd = self._send_cmd_queue.get_nowait() # check for new commands from ui
                 
                 print("really got command")
-                print(cmd)
+                
                 #TODO: #Martin zum testen kannst du messdaten nachrichten aus ui queue nehmen und in measurements queue schreiben
                 # somit kannst du aus dem ui fake serial responses schreiben
                 
-                self.post_message(CMDInterface.UILog(self.try_enceladus_command(cmd)))
+            #Only for Testing begin
+                #MSH begin
+                if(cmd[0] == 'm'):
+                    await self._measurement_file_queue.put(cmd)
+                    print("put data in queue")
+                else:
+                    self.post_message(CMDInterface.UILog(self.try_enceladus_command(cmd))) #TODO: Max ich hoff des stimmt das Messdaten nicht als message gesendet werden?
+                #MSH end
+            #Only for Teting end
+                
             except QueueEmpty:
                 pass
                 
@@ -232,19 +241,23 @@ script_mode: {}
             
             #TODO: #Martin nur messdaten nachricht in _measurement_file_queue schreiben und nicht alle
 
-            #await self._cmd_interface.add_ext_line_to_log(data)
-            self.post_message(CMDInterface.UILog(data))
-            await self._measurement_file_queue.put(data)
-            print("put data in queue")
+            #MSH begin
+            if(data[0] == 'm'):
+                await self._measurement_file_queue.put(data)
+                print("put data in queue")
+            else:
+                #await self._cmd_interface.add_ext_line_to_log(data)
+                self.post_message(CMDInterface.UILog(data))
 
-            if(not self.active_command["finished"]):
-                if(self.cmd_finished_responses[self.active_command["name"]] in data):
-                    # we got response from a currently active command
+                if(not self.active_command["finished"]):
+                    if(self.cmd_finished_responses[self.active_command["name"]] in data):
+                        # we got response from a currently active command
 
-                    self.active_command["finished"] = True
-                    self.active_command["response"] = data
-                    #await self._cmd_interface.add_ext_line_to_log("cmd: \""+self.active_command["name"]+"\" finished")
-                    self.post_message(CMDInterface.UILog("cmd: \""+self.active_command["name"]+"\" finished"))
+                        self.active_command["finished"] = True
+                        self.active_command["response"] = data
+                        #await self._cmd_interface.add_ext_line_to_log("cmd: \""+self.active_command["name"]+"\" finished")
+                        self.post_message(CMDInterface.UILog("cmd: \""+self.active_command["name"]+"\" finished"))
+            #MSH end
     
     def _send_cmd_(self, cmd:str):
         """actually sending the command
@@ -339,9 +352,14 @@ class FileIOTaskWidget(Widget):
     
     async def filewrite_worker(self):
         while True:
-            newline = await self._measurements_queue.get()
-            #TODO #Martin messdaten nachrichten umbauen in csv zeilen bevor sie ins file hinzugefügt werden
+            data = await self._measurements_queue.get() #TODO: changed name from newline to data; delete comment if it is ok
+            #TODO #Martin messdaten nachrichten umbauen in csv zeilen bevor sie ins file hinzugefügt werden 
             print("got data from queue")
+            
+            #MSH begin
+            newline = data.replace(' ' , ';')
+            #MSH end
+            
             await self.write_to_measurements_file(newline)
             print("written data to file")
             self.writespeeds[0] += 1
