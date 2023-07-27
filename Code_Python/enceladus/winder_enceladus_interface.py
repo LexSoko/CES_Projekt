@@ -142,9 +142,10 @@ class EnceladusSerialWidget(Widget):
                 
             #Only for Testing begin
                 #MSH begin
-                if(cmd[0] == 'm'):
+                if(cmd == re.search("^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ ([-]?[0-9]+)|( +)$", cmd).group() ):
                     await self._measurement_file_queue.put(cmd)
                     print("put data in queue")
+                    print("messdaten passed (Martins Test message)") #TODO: delete test prnt
                 else:
                     self.post_message(CMDInterface.UILog(self.try_enceladus_command(cmd))) #TODO: Max ich hoff des stimmt das Messdaten nicht als message gesendet werden?
                 #MSH end
