@@ -147,7 +147,7 @@ class EnceladusSerialWidget(Widget):
                 # ^m        für startend mit m
                 # [-]?      für optionales minus
                 # [0-9]+    für belibige anzahl an ziffern
-                # ()        nur den teil vom text in match objekt speichern
+                # ()        nur den teil vom text in match objekt speichern ????????????????
                 # [\s]*$    für beliebig viele leerzeichen am ende des commands
                 # would be better since this regex only accepts the last number or some whitespaces
                 # re.search() returns a match object
@@ -161,10 +161,11 @@ class EnceladusSerialWidget(Widget):
                 #     # match was found
                 #     # add to measurements queue here
                 
-                if(cmd == re.search("^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ ([-]?[0-9]+)|( +)$", cmd).group() ):
-                    await self._measurement_file_queue.put(cmd)
+                match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", cmd)
+                if(match_obj != None):
+                    match_obj_str = match_obj.group()
+                    await self._measurement_file_queue.put(match_obj_str)
                     print("put data in queue")
-                    print("messdaten passed (Martins Test message)") #TODO: delete test prnt
                 else:
                     self.post_message(CMDInterface.UILog(self.try_enceladus_command(cmd))) #TODO: Max ich hoff des stimmt das Messdaten nicht als message gesendet werden?
                 #MSH end
@@ -260,10 +261,11 @@ script_mode: {}
             data = line.replace("\\r\\n\'","").replace("b\'","")
             
             #TODO: #Martin nur messdaten nachricht in _measurement_file_queue schreiben und nicht alle
-
             #MSH begin
-            if(data[0] == 'm'):
-                await self._measurement_file_queue.put(data)
+            match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", data)
+            if(match_obj != None):
+                match_obj_str = match_obj.group()
+                await self._measurement_file_queue.put(match_obj_str)
                 print("put data in queue")
             else:
                 #await self._cmd_interface.add_ext_line_to_log(data)
@@ -377,7 +379,7 @@ class FileIOTaskWidget(Widget):
             print("got data from queue")
             
             #MSH begin
-            newline = data.replace(' ' , ';')
+            newline = data.rstrip().replace(' ' , ';')
             #MSH end
             
             await self.write_to_measurements_file(newline)
