@@ -27,7 +27,7 @@ import serial
 import re
 
 # Important constants for Serial comm
-COM_PORT = "COM3"
+COM_PORT = "COM9"
 BAUD_RATE = 57600
 
 #TODO extract static functions into utils class
@@ -55,6 +55,7 @@ class Singleton(object):
 
 class Command(ABC):
     name:str = ""
+    full_cmd:str = ""
     params:list = []
     response_keys:list(str) = ""
     response_msg:str = ""
@@ -62,8 +63,9 @@ class Command(ABC):
     
     _possible_states:list(str) = ["created","sent","resp_received","error","finished","novalidator"]
     
-    def __init__(self,name:str,params:list,response_keys:list(str)) -> None:
+    def __init__(self,name:str,full_cmd:str,params:list,response_keys:list(str)) -> None:
         self.name = name
+        self.full_cmd = full_cmd
         self.params = params
         self.response_keys = response_keys
         
@@ -75,24 +77,32 @@ class Command(ABC):
     
     def got_received(self, response_msg:str) -> None:
         self.response_msg = response_msg
-        self.state = "received"
+        self.state = "resp_received"
+    
+    @abstractmethod
+    def validate_cmd(self)->str:
+        return "novalidator"
     
     async def wait_on_response(self) -> str:
         while not self.state == "resp_received":
             await asyncio.sleep(1)
         
         return self.validate_cmd()
-    
-    @abstractmethod
-    def validate_cmd(self)->str:
-        return "novalidator"
+        
+    def __str__(self):
+        return "{name:"+self.name+" params:"+str(self.params)+" state:"+self.state+"}"
         
 class CommandFactory(Singleton):
-    """ allowed commands"""
+    """used to check and create Command objects
+    """
+    
+    #allowed commands
     allowed_commands:List[str] = [
         "whoareyou","gotorelrev","gotorel","abort","disableidlecurrent",
         "getpos","loadcellav","loadcellraw","loadcellstart","loadcellstop"
         ]
+    
+    #allowed command responses
     cmd_response_keys:Dict[str,List[str]] = {
         "whoareyou"         :["FrankensteinsGemueseGarten_0v0"],
         "gotorelrev"        :["DONE"],
@@ -108,12 +118,12 @@ class CommandFactory(Singleton):
     
     class StandardCommand(Command):
         def validate_cmd(self) -> str:
-            if any(self.response_keys in self.response_msg):
+            if any([resp in self.response_msg for resp in self.response_keys]):
                 return "finished"
             else:
                 return "error"
     
-    def createStandardCommand(cmd:str) -> StandardCommand:
+    def createStandardCommand(self,cmd:str) -> StandardCommand:
         # check if cmd contains valid cmd key:
         keys_in_cmd = [key for key in CommandFactory.cmd_response_keys.keys() if key in cmd]
         
@@ -127,7 +137,8 @@ class CommandFactory(Singleton):
         
         return CommandFactory.StandardCommand(
             name=cmd_key,
-            params = cmd.replace(cmd_key+" ","").split(" "),
+            full_cmd=cmd,
+            params = cmd.replace(cmd_key,"").strip().split(" "),
             response_keys=CommandFactory.cmd_response_keys[cmd_key]
         )
             
@@ -214,6 +225,8 @@ class EnceladusSerialWidget(Widget):
     coilwinder_script = False
     com_port_exists:bool = False
     
+    active_cmds:List[Command] = []
+    
     
     def __init__(self, parent:CMDInterface,send_cmd_queue:Queue,meas_filequeue:Queue,*args, **kwargs):
         self._cmd_interface = parent
@@ -231,8 +244,13 @@ class EnceladusSerialWidget(Widget):
             
             try:
                 cmd = self._send_cmd_queue.get_nowait() # check for new commands from ui
+                if (type(cmd) is CommandFactory.StandardCommand):
+                    print("ser: got command with right type")
+                    self.active_cmds.append(cmd)
+                    self.post_message(CMDInterface.UILog(self.try_enceladus_command(str(cmd.full_cmd))))
+                    cmd.got_sent()
                 
-                print("really got command")
+                print("really got command:"+str(cmd))
                 
                 #TODO: #Martin zum testen kannst du messdaten nachrichten aus ui queue nehmen und in measurements queue schreiben
                 # somit kannst du aus dem ui fake serial responses schreiben
@@ -258,13 +276,13 @@ class EnceladusSerialWidget(Widget):
                 #     # match was found
                 #     # add to measurements queue here
                 
-                match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", cmd)
+                match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", cmd.full_cmd)
                 if(match_obj != None):
                     match_obj_str = match_obj.group()
                     await self._measurement_file_queue.put(match_obj_str)
-                    print("put data in queue")
-                else:
-                    self.post_message(CMDInterface.UILog(self.try_enceladus_command(cmd))) #TODO: Max ich hoff des stimmt das Messdaten nicht als message gesendet werden?
+                    #print("put data in queue:"+match_obj_str)
+                #else:
+                    #self.post_message(CMDInterface.UILog(cmd.full_cmd)) #TODO: Max ich hoff des stimmt das Messdaten nicht als message gesendet werden?
                 #MSH end
             #Only for Teting end
                 
@@ -356,21 +374,33 @@ script_mode: {}
             #print("here baby")
             #print(line)
             data = line.replace("\\r\\n\'","").replace("b\'","")
-            
+            #print("ser: got msg: "+data)
             #TODO: #Martin nur messdaten nachricht in _measurement_file_queue schreiben und nicht alle
             #MSH begin
             match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", data)
-            if(match_obj != None):
+            if(match_obj != None and match_obj.group() != ""):
                 match_obj_str = match_obj.group()
                 await self._measurement_file_queue.put(match_obj_str)
-                print("put data in queue")
             else:
-                #await self._cmd_interface.add_ext_line_to_log(data)
-                self.post_message(CMDInterface.UILog(data))
+                    #print("put data in queue:\""+match_obj_str+"\"")
+                #else:
+                    #await self._cmd_interface.add_ext_line_to_log(data)
+                    #self.post_message(CMDInterface.UILog(data))
 
-                if(not self.active_command["finished"]):
-                    if(self.cmd_finished_responses[self.active_command["name"]] in data):
-                        # we got response from a currently active command
+                #await self._cmd_interface.add_ext_line_to_log(data)
+                for cmd in self.active_cmds:
+                    if data in cmd.response_keys:
+                        print("sereadline: commandresponse received:"+str(cmd))
+                        cmd.got_received(data)
+                        self.active_cmds.remove(cmd)
+                    
+            #self.post_message(CMDInterface.UILog(data))
+            #await self._measurement_file_queue.put(data)
+            #print("put data in queue")
+
+            if(not self.active_command["finished"]):
+                if(self.cmd_finished_responses[self.active_command["name"]] in data):
+                    # we got response from a currently active command
 
                         self.active_command["finished"] = True
                         self.active_command["response"] = data
@@ -470,29 +500,34 @@ class FileIOTaskWidget(Widget):
         return Align.left(text, vertical="top")
     
     async def filewrite_worker(self):
-        while True:
-            data = await self._measurements_queue.get() #TODO: changed name from newline to data; delete comment if it is ok
-            #TODO #Martin messdaten nachrichten umbauen in csv zeilen bevor sie ins file hinzugefügt werden 
-            print("got data from queue")
-            
-            #MSH begin
-            newline = data.rstrip().replace(' ' , ';')
-            #MSH end
-            
-            await self.write_to_measurements_file(newline)
-            print("written data to file")
-            self.writespeeds[0] += 1
+        print("open file")
+        if not os.path.exists(self.dirname):
+            os.makedirs(self.dirname)
+        
+        #async with aiofiles.open(self.dirname+self.meas_filename, mode='a') as handle:
+        
+        async with aiofiles.open(self.dirname+self.meas_filename, mode='a') as handle:
+            while True:
+                data = await self._measurements_queue.get() #TODO: changed name from newline to data; delete comment if it is ok
+                #TODO #Martin messdaten nachrichten umbauen in csv zeilen bevor sie ins file hinzugefügt werden 
+                print("got data from queue")
+                #MSH begin
+                newline = data.rstrip().replace(' ' , ';')
+                #MSH end
+                await handle.write(newline+"\n")
+                #await self.write_to_measurements_file(newline)
+                #print("written data to file")
+                self.writespeeds[0] += 1
+                self.refresh()
+                self.app.refresh()
         
     async def open_measurements_file(self):
         self.measurement_file_handle = await aiofiles.open(self.meas_filename)
     
         
     async def write_to_measurements_file(self,csvline:str):
-        if not os.path.exists(self.dirname):
-            os.makedirs(self.dirname)
-            
-        # open the file
         async with aiofiles.open(self.dirname+self.meas_filename, mode='a') as handle:
+            # open the file
             # write to the file
             await handle.write(csvline+"\n")
     
@@ -515,6 +550,7 @@ class MachineScriptsWidget(Widget):
     
     allowed_scripts = ["script simple winding"]
     
+    cmd_fact = CommandFactory()
     
     def __init__(self,
                  parent:CMDInterface,
@@ -566,11 +602,24 @@ class MachineScriptsWidget(Widget):
                         await self.simple_winding() # TODO: use script container class instead
             else:
                 cmd = await self._ui_cmd_queue.get()
-                if (cmd is not None) and (cmd in self.allowed_scripts):
-                    self.script_mode = True
-                    self.script_name = cmd
+                print("cmd_ex got command: "+cmd)
+                cmd_obj = CommandFactory().createStandardCommand(cmd)
+                print("cmd_ex built cmd_obj: "+str(cmd_obj))
+                if cmd_obj is not None:
+                    await self._command_send_queue.put(cmd_obj)
+                    print("cmd_ex sent cmd_obj")
                 else:
-                    await self._command_send_queue.put(cmd)
+                    self.post_message(CMDInterface.UILog("command_executor: "+cmd+" not a command"))
+                
+                status = await cmd_obj.wait_on_response()
+                print("cmd_ex got response:"+status)
+                self.post_message(CMDInterface.UILog("command_executor: "+cmd+" finished, response: "+cmd_obj.response_msg))
+                    
+                #if (cmd is not None) and (cmd in self.allowed_scripts):
+                #    self.script_mode = True
+                #    self.script_name = cmd
+                #else:
+                #    await self._command_send_queue.put(cmd)
                 
     async def simple_winding(self): # move this to script container classes
         match self.script_state:
@@ -730,7 +779,7 @@ class CMDInterface(App):
     def on_cmdinterface_uilog(self, message: CMDInterface.UILog)-> None:
         """gets called when a UILog Message is postet
         """
-        print("got message")
+        #print("got message")
         self.query_one(TextLog).write(message.msg)
 
 
