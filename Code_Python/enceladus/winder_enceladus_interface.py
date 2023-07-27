@@ -132,6 +132,9 @@ class EnceladusSerialWidget(Widget):
             
             try:
                 cmd = self._send_cmd_queue.get_nowait() # check for new commands from ui
+                #TODO: #Martin zum testen kannst du messdaten nachrichten aus ui queue nehmen und in measurements queue schreiben
+                # somit kannst du aus dem ui fake serial responses schreiben
+                
                 print("really got command")
                 self.post_message(CMDInterface.UILog(self.try_enceladus_command(cmd)))
             except QueueEmpty:
@@ -217,6 +220,8 @@ script_mode: {}
             #print("here baby")
             #print(line)
             data = line.replace("\\r\\n\'","").replace("b\'","")
+            
+            #TODO: #Martin nur messdaten nachricht in _measurement_file_queue schreiben und nicht alle
 
             #await self._cmd_interface.add_ext_line_to_log(data)
             self.post_message(CMDInterface.UILog(data))
@@ -326,6 +331,7 @@ class FileIOTaskWidget(Widget):
     async def filewrite_worker(self):
         while True:
             newline = await self._measurements_queue.get()
+            #TODO #Martin messdaten nachrichten umbauen in csv zeilen bevor sie ins file hinzugefügt werden
             print("got data from queue")
             await self.write_to_measurements_file(newline)
             print("written data to file")
