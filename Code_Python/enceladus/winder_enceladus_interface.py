@@ -142,6 +142,25 @@ class EnceladusSerialWidget(Widget):
                 
             #Only for Testing begin
                 #MSH begin
+                # note from max: 
+                # (^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$
+                # ^m        für startend mit m
+                # [-]?      für optionales minus
+                # [0-9]+    für belibige anzahl an ziffern
+                # ()        nur den teil vom text in match objekt speichern
+                # [\s]*$    für beliebig viele leerzeichen am ende des commands
+                # would be better since this regex only accepts the last number or some whitespaces
+                # re.search() returns a match object
+                # things enclosed in () in the regex will be returned in the match object
+                # match.group() returns the match string
+                # TODO: #Martin fix regex
+                # first get match object with
+                # match_obj = re.search("regex",cmd)
+                # then check if a match was found
+                # if match_obj is not None:
+                #     # match was found
+                #     # add to measurements queue here
+                
                 if(cmd == re.search("^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ ([-]?[0-9]+)|( +)$", cmd).group() ):
                     await self._measurement_file_queue.put(cmd)
                     print("put data in queue")
