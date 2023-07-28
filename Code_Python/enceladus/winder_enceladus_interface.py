@@ -416,7 +416,7 @@ class FileIOTaskWidget(Widget):
             timestring = FileIOTaskWidget.return_time()
             self.meas_filename = self.meas_filename_pattern.replace("xxx",timestring)
             self.dirname = self.dirname_pattern.replace("xxx",datestring)
-            
+            self.filesize = 0   # byte
             async with aiofiles.open(self.dirname+self.meas_filename, mode='a') as handle:
                 while self.filesize < self.max_filesize:
                     self.write_queue_fulliness = self._measurements_queue.qsize()
@@ -429,12 +429,7 @@ class FileIOTaskWidget(Widget):
                     #
                     # make a reactive property(see self.write_queue_fulliness) named filesize       done
                     # render it to ui                                                               done
-                    # and update it's value with the filesize here(this line needs to be tested):   #TODO: Max bitte testen
-                    
-                    self.filesize = await aiofiles.os.path.getsize(self.dirname+self.meas_filename)
-                    print("filesize:"+str(self.filesize))
-                    
-                    
+                    # and update it's value with the filesize here(this line needs to be tested):   #TODO: Max bitte testen                   
                     
                     newline = data.rstrip().replace(' ' , ';')
                     print(newline)
@@ -444,6 +439,8 @@ class FileIOTaskWidget(Widget):
                     self.refresh()
                     self.app.refresh()
                     
+                    self.filesize += len(newline)   # byte
+                    print("filesize:"+str(self.filesize))
                     #TODO #measurementFiles #Martin
                     #
                     # make an attribute (class variable) named max_filesize and make a check 
