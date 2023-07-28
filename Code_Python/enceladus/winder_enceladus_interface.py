@@ -200,15 +200,14 @@ class EnceladusSerialWidget(Widget):
                     pass
                 
             #Only for Testing begin
-                #match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", cmd.full_cmd)
-                #if(match_obj != None):
-                #    match_obj_str = match_obj.group()
-                #    await self._measurement_file_queue.put(match_obj_str)
-                #    #print("put data in queue:"+match_obj_str)
-                #else:
-                    #self.post_message(CMDInterface.UILog(cmd.full_cmd)) #TODO: Max ich hoff des stimmt das Messdaten nicht als message gesendet werden?
-                #MSH end
-            #Only for Teting end
+            #     match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", cmd.full_cmd)
+            #     if(match_obj != None):
+            #        match_obj_str = match_obj.group()
+            #        await self._measurement_file_queue.put(match_obj_str)
+            #        print("put data in queue:"+match_obj_str)
+            #     else:
+            #         self.post_message(CMDInterface.UILog(cmd.full_cmd)) #TODO: Max ich hoff des stimmt das Messdaten nicht als message gesendet werden?
+            # Only for Teting end
                 
             except QueueEmpty:
                 pass
@@ -256,7 +255,6 @@ class EnceladusSerialWidget(Widget):
             #print(line)
             data = line.replace("\\r\\n\'","").replace("b\'","")
             #print("ser: got msg: "+data)
-            #TODO: #Martin nur messdaten nachricht in _measurement_file_queue schreiben und nicht alle
             #MSH begin
             match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", data)
             if(match_obj != None and match_obj.group() != ""):
@@ -327,16 +325,14 @@ class EnceladusSerialWidget(Widget):
 class FileIOTaskWidget(Widget):
     #TODO #measurementFiles finish parameter file
     #TODO #measurementFiles #scripting add script phase logging
-    #TODO #measurementFiles #Martin implement writing to new File when max_filesize is reached
     
     write_queue_fulliness = reactive(int)
     #directory_name = reactive(str)
     filenames = reactive(list[str])
     writespeeds = reactive(list[int])
     
-    #TODO #measurementFiles #Martin
-    #
-    # type hint filesize here like the other reactives
+    filesize = reactive(int)
+
     
     _measurements_queue:Queue #infinite sizes for now
     @property
@@ -346,11 +342,10 @@ class FileIOTaskWidget(Widget):
     params_queue:Queue
     
     
-    #TODO #measurementFiles #Martin
-    #
-    # add max_filesize here like the other constants
+    max_filesize:int = 10000 #  10kbyte
     
-    dirname:str = "./winder_measurements/xxx/"
+    dirname_pattern:str = "./winder_measurements/xxx/"
+    meas_filename_pattern:str = "meas_xxx.csv"
     
     measurement_file_handle:AiofilesContextManager
     meas_filename:str = "meas_xxx.csv"
@@ -364,11 +359,10 @@ class FileIOTaskWidget(Widget):
         self._measurements_queue = meas_filequeue
         self.params_queue = Queue(0)
         
-        datestring = FileIOTaskWidget.return_date()
-        self.dirname = self.dirname.replace("xxx",datestring)
+        self.dirname = self.dirname_pattern
         
         timestring = FileIOTaskWidget.return_time()
-        self.meas_filename = self.meas_filename.replace("xxx",timestring)
+        self.meas_filename = self.meas_filename_pattern.replace("xxx",timestring)
         self.params_filename = self.params_filename.replace("xxx",timestring)
         #print("dirname "+self.dirname)
         #self.directory_name = self.dirname
@@ -386,20 +380,20 @@ class FileIOTaskWidget(Widget):
         #self.measurement_file_handle = await self.open_measurements_file()
     
     def render(self) -> Align:
-        #TODO #measurementFiles #Martin
-        #
-        # render filesize here like the other reactives
                 
-        text = """queuesize: {}\nfilenames: {}\nwritespeeds: {}""".format(
+        text = """queuesize: {}\nfilenames: {}\nwritespeeds: {}\nfilesize:  {}""".format(
             self.write_queue_fulliness,
             self.filenames,
-            self.writespeeds
+            self.writespeeds,
+            self.filesize
         )
             
             
         return Align.left(text, vertical="top")
     
     async def filewrite_worker(self):
+        datestring = FileIOTaskWidget.return_date()
+        self.dirname = self.dirname_pattern.replace("xxx",datestring)
         # print("open file")
         if not os.path.exists(self.dirname):
             os.makedirs(self.dirname)
@@ -407,48 +401,38 @@ class FileIOTaskWidget(Widget):
         
         # async with aiofiles.open(self.dirname+self.meas_filename, mode='a') as handle:
         
-        async with aiofiles.open(self.dirname+self.meas_filename, mode='a') as handle:
-            while True:
-                self.write_queue_fulliness = self._measurements_queue.qsize()
-                
-                data = await self._measurements_queue.get()
-                #print("got data from queue")
-                
-                
-                #TODO #measurementFiles #Martin
-                #
-                # make a reactive property(see self.write_queue_fulliness) named filesize
-                # render it to ui
-                # and update it's value with the filesize here(this line needs to be tested):
-                # self.filesize = aiofiles.os.path.getsize(self.dirname+self.meas_filename)
-                #
-                
-                
-                
-                
-                newline = data.rstrip().replace(' ' , ';')
-                await handle.write(newline+"\n")
+        # MSH begin
+        while True:
+            #TODO: #Martin update the filenames reactive with new filenames
+            #TODO: #Martin close and open same file after data block of size blocksize is written
+            timestring = FileIOTaskWidget.return_time()
+            self.meas_filename = self.meas_filename_pattern.replace("xxx",timestring)
+            self.filesize = 0   # byte
+            async with aiofiles.open(self.dirname+self.meas_filename, mode='a') as handle:
+                while self.filesize < self.max_filesize:
+                    self.write_queue_fulliness = self._measurements_queue.qsize()
+                    
+                    data = await self._measurements_queue.get()
+                    #print("got data from queue")
+                    
+                                    
+                    
+                    newline = data.rstrip().replace(' ' , ';')
+                    #print(newline)
+                    await handle.write(newline+"\n")
 
-                self.writespeeds[0] += 1
-                self.refresh()
-                self.app.refresh()
-                
-                #TODO #measurementFiles #Martin
-                #
-                # make an attribute (class variable) named max_filesize and make a check
-                # if it's reached here since
-                # if this is the case:
-                # -> break the loop (maybe even through a condition instead of while True)
-                # -> exit the "with aiofiles.open" indent (this will close the file)
-                # -> change self.meas_filename to name with new timestamp
-                # -> start a new async with aiofiles.open() as handle block (could be
-                #    realized with a while True around the current with aiofiles.open())
-                #
-                # P.S.: Like a STM operator esoterically places aluminum Foil on it's
-                #       big microscopic device, I myself esoterically place critical
-                #       code in the quiet neighbourhood of loop iteration begendings.
-                #       LG Jax Most
-                #
+                    self.writespeeds[0] += 1
+                    self.refresh()
+                    self.app.refresh()
+                    
+                    self.filesize += len(newline)   # byte
+                    #print("filesize:"+str(self.filesize))
+                    #
+                    # P.S.: Like a STM operator esoterically places aluminum Foil on it's
+                    #       big microscopic device, I myself esoterically place critical
+                    #       code in the quiet neighbourhood of loop iteration begendings.
+                    #       LG Jax Most                                                                     sadly no aluminium was found :(
+                    #
         
     async def open_measurements_file(self):
         self.measurement_file_handle = await aiofiles.open(self.meas_filename)
