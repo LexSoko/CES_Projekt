@@ -89,6 +89,16 @@ int ACD_Y_PIN = A7;
 #define MOTOR_DIRECTION2 9
 #define MOTOR_STEP2 10
 
+//// motor 1 is main motor and also gets faster step impulses
+//#define MOTOR_DIRECTION1 9 //only active one
+//#define MOTOR_STEP1 10
+//
+//// motor 2 is secondary axis motor and gets slower step impulses by factor K_xy
+//#define MOTOR_DIRECTION2 12
+//#define MOTOR_STEP2 13
+
+
+
 #define LOADCELL
 #define PIN_DT 19
 #define PIN_SCK 18
@@ -128,10 +138,11 @@ int Timer1DelayRegisterPreloadValue = 65000;              //
 
 /////////////////////////////////////////// Positioning Variables ///////////////////////////////////////
 int MotorDirection = 0;               // Motordirection = 0 --> Motor to the Left (CCW), Motordirection = 1 --> Motor to the right (clockwise)
-int MaxMotorSpeed = 50;                 // Motorspeed can be between 0 and 1000 --> setting the timer value
+int MaxMotorSpeed = 200;                 // Motorspeed can be between 0 and 1000 --> setting the timer value
+// umrechnungsfaktor rechnung gibt 1 step zu viel auf hauptachse pro nebenachsenstep
 
 // secondary axis variables
-const char K_xy = 15;
+const char K_xy = 2;
 int K_xy_count = 0;
 int second_axis_dir_rev = 0; // 0 is same as main axis 1 is reversed of main axis
 long CurrentPosition2=0;
@@ -157,8 +168,12 @@ int CruiseBackSpeed = 150;             // Default very slow
 unsigned long StopWatch_BeginTime = 0;
 
 int endstop = 0;  // value is 0 if no endstop is reached 
-const int mask = 0b01010000;
+const int mask = 0b10100000;
 int previous_endstopt_val = 0;
+#define PIN_ESL_NO 4
+#define PIN_ESL_NC 5
+#define PIN_ESR_NO 6
+#define PIN_ESR_NC 7
 
 /////////////////////////////////////////// Positioning Variables ///////////////////////////////////////
 
@@ -387,12 +402,19 @@ void setup() {
   pinMode(DISP_D4, OUTPUT);
   pinMode(DISP_D5, OUTPUT);
   pinMode(DISP_D6, OUTPUT);
-  pinMode(DISP_D7, OUTPUT);  
+  pinMode(DISP_D7, OUTPUT);
+  //motors
   pinMode(MOTOR_DIRECTION1, OUTPUT);
   pinMode(MOTOR_STEP1, OUTPUT);
   pinMode(MOTOR_ENABLE, OUTPUT);
   digitalWrite(MOTOR_ENABLE, HIGH);
   digitalWrite(MOTOR_STEP1, LOW);
+
+  
+  pinMode(PIN_ESL_NO,INPUT_PULLUP);
+  pinMode(PIN_ESL_NC,INPUT_PULLUP);
+  pinMode(PIN_ESR_NO,INPUT_PULLUP);
+  pinMode(PIN_ESR_NC,INPUT_PULLUP);
 
 #ifdef SECOND_AXIS
   pinMode(MOTOR_DIRECTION2, OUTPUT);
@@ -521,6 +543,9 @@ void Abort()
   OverSteppingHome = false;
   if(DisableIdleCurrent==true)
     MotorTurnOffCurrent();
+  
+  sprintf(string, "Aborting movement!");
+  Serial.println(string);
 }
 
 void StopWatch_Start()
@@ -1006,12 +1031,12 @@ void ProcessMovement()
     }
 }
 
-void EndstopRead()  // NC_l pin 4, NO_l pin5, NC_r pin6, NO_r pin7; works for ATMEGA382p and ATMEGA16
+void EndstopRead()  // NC_l pin5, NO_l pin4, NC_r pin7, NO_r pin6; works for ATMEGA382p and ATMEGA16
 {
   
-  b = ((~PIND) & mask)
-  endstop = (~a) & b 
-  previous_endstopt_val = b 
+  byte b = ((~PIND) & mask);
+  endstop = previous_endstopt_val & ~b ;
+  previous_endstopt_val = b; 
 }
 
 // Step function gets called with the Timer speed.
@@ -1022,8 +1047,7 @@ void Step()
     //  falls not aus passiert irgendwas 
     EndstopRead();
 
-    if(endstop):
-      abort();
+    if(endstop) Abort();
     
     ProcessStateMachine();
     ProcessMovement();
@@ -1447,8 +1471,6 @@ void ProcessReceivedData()
           //////////////////////////////////////////////         
           if(hasStringInside( temp , "abort" ) && (understood == false))
           {
-            sprintf(string, "Aborting movement!");
-            Serial.println(string);
             Abort();
             understood = true;
           }
