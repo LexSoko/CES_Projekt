@@ -425,9 +425,8 @@ class FileIOTaskWidget(Widget):
                 
                 
                 
-                #MSH begin
+                
                 newline = data.rstrip().replace(' ' , ';')
-                #MSH end
                 await handle.write(newline+"\n")
 
                 self.writespeeds[0] += 1
