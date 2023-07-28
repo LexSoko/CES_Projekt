@@ -5,7 +5,7 @@ import os
 # imports for asyncronous task
 import asyncio
 from asyncio import Queue, QueueEmpty
-from typing import Dict, List
+from typing import Any, Callable, Dict, List
 import aiofiles
 from aiofiles.base import AiofilesContextManager
 import aiofiles.os, aiofiles.ospath
@@ -27,9 +27,28 @@ from textual.events import Ready
 import serial
 import re
 
+# other imports
+from dataclasses import dataclass,field
+
+class Machine():
+    def __init__(self):
+        # Loadcell parameters
+        self.calibrated:bool = False
+        self.tara_weight:int = None
+        self.scale_weight:int = None
+
+    # coil parameters
+
+    # machinebounds
+
 # Important constants for Serial comm
 COM_PORT = "COM9"
 BAUD_RATE = 57600
+machine = {
+    "calibrated"  :False,
+    "tara_weight" :None,
+    "scale_weight":None
+}
 
 #TODO extract static functions into utils class
 
@@ -123,11 +142,16 @@ class CommandFactory(Singleton):
     class StandardCommand(Command):
         def validate_cmd(self) -> str:
             if any([resp in self.response_msg for resp in self.response_keys]):
+                self.state = "finished"
                 #print(self.name+" validates finished")
-                return "finished"
+                #return "finished"
             else:
+                self.state = "error"
                 #print(self.name+" validates error")
-                return "error"
+                #return "error"
+            
+            return self.state
+        
     
     def createStandardCommand(self,cmd:str) -> StandardCommand:
         # check if cmd contains valid cmd key:
@@ -453,7 +477,28 @@ class FileIOTaskWidget(Widget):
     def return_time()->str:
         return datetime.now().strftime("%H-%M-%S")
         
+
+
+
+class MachineWidget(Widget):
+    myMachine = reactive(dict)
+
+    def render(self) -> Align:
+        text = str(self.myMachine)
+        return Align.left(text, vertical="top")
     
+    async def on_mount(self):
+        asyncio.create_task(self.updateMachine())
+    
+    async def updateMachine(self):
+        while True:
+            global machine
+            self.myMachine = machine
+            self.refresh()  # This is required for ongoing refresh
+            self.app.refresh()  # Also required for ongoing refresh, unclear why, but commenting-out breaks live refresh.
+            print("update machine widget")
+            await asyncio.sleep(1)
+
 
 class MachineScriptsWidget(Widget):
     
@@ -461,7 +506,11 @@ class MachineScriptsWidget(Widget):
     script_name = reactive(str)
     script_state = reactive("unconnected")
     
-    allowed_scripts = ["script simple winding"]
+    allowed_scripts = ["script simple winding", "script calibration"]
+
+
+    allowed_script_inputs:list[str] = []  #this will be filled by scripts to enable user input commands
+    ui_script_inputs:list[str] = []
     
     cmd_fact = CommandFactory()
     
@@ -509,56 +558,156 @@ class MachineScriptsWidget(Widget):
     async def command_executor(self):
         while True:
             await asyncio.sleep(0.01) #placeholder code
-            if self.script_mode:
-                match self.script_name:
-                    case "script simple winding":
-                        await self.simple_winding() # TODO: use script container class instead
+            #if self.script_mode:
+            #    match self.script_name:
+            #        case "script simple winding":
+            #            await self.simple_winding() # TODO: use script container class instead
+            #else:
+            
+            cmd = await self._ui_cmd_queue.get()
+            #print("cmd_ex got command: "+cmd)
+            if(not cmd in self.allowed_scripts and not cmd in self.allowed_script_inputs):
+                cmd_obj = await self.create_cmd_await_response(cmd)
+                self.whennoerror(cmd_obj,lambda sel,cmd_o: sel.post_message(
+                    CMDInterface.UILog("cmd_exe cmd:"+cmd_o.state +"\n->resp:"+cmd_o.response_msg))
+                )
+            elif(not self.script_mode):
+                match cmd:
+                    case "script calibration":
+                        # create calibration script
+                        self.create_script_task(self.calibration_script)
+            elif(cmd in self.allowed_script_inputs):
+                self.ui_script_inputs.append(cmd)
             else:
-                
-                cmd = await self._ui_cmd_queue.get()
-                #print("cmd_ex got command: "+cmd)
-                
-                #
-                # TODO #scripting create simple one liner code for command
-                # generation and response awaiting
-                # TODO #scripting make calibration script as first machinescript
-                # and with learned lessons the coil winding script
-                # don't waste your time on Endstops and automatic coil finding
-                # RESULTS ARE MORE TIMECRITICAL!!
-                #
-                # Calibration:
-                # -> promp User to "empty the loadcell"
-                # -> tara command from UI leads to averaged measurement
-                # -> promp User to put "calibration weight" on loadcell
-                # -> scale command for another avrg. meas.
-                # -> save these properties somwhere safe
-                # -> log tara and scale values in UI
-                # 
-                # First Winding:
-                # -> drive to one coil ending manually (with prompt)
-                # -> UI cmd SetPos2
-                # -> drive to other coil ending manually (with prompt)
-                # -> UI cmd SetPos1
-                # -> prompt user for coil_diameter, coil_height, cable_diameter
-                #                   winding number, spannsystemparameters, phases to log
-                # -> calculate winding speeds, for constant cable throughput
-                # -> prompt user if the calculated speed is ok and can be driven safely
-                # -> start the buisiness:
-                # -> loop over all required goto commands
-                # 
-                
-                cmd_obj = CommandFactory().createStandardCommand(cmd)
+                #script was called but already one acitve
+                self.post_message(CMDInterface.UILog("cmd_exe: script already running"))
+            #
+            # TODO #scripting think how paralell scripts during scripting phase could be implemented
+            #
+            # TODO #scripting make calibration script as first machinescript
+            # and with learned lessons the coil winding script
+            # don't waste your time on Endstops and automatic coil finding
+            # RESULTS ARE MORE TIMECRITICAL!!
+            #
+            # Calibration:
+            # -> promp User to "empty the loadcell"
+            # -> tara command from UI leads to averaged measurement
+            # -> promp User to put "calibration weight" on loadcell
+            # -> scale command for another avrg. meas.
+            # -> save these properties somwhere safe
+            # -> log tara and scale values in UI
+            # 
+            # First Winding:
+            # -> drive to one coil ending manually (with prompt)
+            # -> UI cmd SetPos2
+            # -> drive to other coil ending manually (with prompt)
+            # -> UI cmd SetPos1
+            # -> prompt user for coil_diameter, coil_height, cable_diameter
+            #                   winding number, spannsystemparameters, phases to log
+            # -> calculate winding speeds, for constant cable throughput
+            # -> prompt user if the calculated speed is ok and can be driven safely
+            # -> start the buisiness:
+            # -> loop over all required goto commands
+            # 
+            
+
+    async def create_cmd_await_response(self, cmd:str)->Command:
+        cmd_obj = CommandFactory().createStandardCommand(cmd)
                 #print("cmd_ex built cmd_obj: "+str(cmd_obj))
-                if cmd_obj is not None:
-                    await self._command_send_queue.put(cmd_obj)
+        if cmd_obj is not None:
+            await self._command_send_queue.put(cmd_obj)
                     #print("cmd_ex sent cmd_obj")
-                    status = await cmd_obj.wait_on_response()
+            status = await cmd_obj.wait_on_response()
                     #print("cmd_ex got response:"+status)
-                    self.post_message(CMDInterface.UILog("command_executor: "+str(cmd)+"-response: "+cmd_obj.response_msg))
+            #self.post_message(CMDInterface.UILog("command_executor: "+str(cmd)+"-response: "+cmd_obj.response_msg))
                     #print("cmd_ex got response end:")
-                else:
-                    self.post_message(CMDInterface.UILog("command_executor: "+cmd+" not a command"))
-                
+        #else:
+            #self.post_message(CMDInterface.UILog("command_executor: "+cmd+" not a command"))
+        
+        return cmd_obj
+    
+    def whennoerror(self,cmd_obj:Command,func:Callable[[MachineScriptsWidget,Command],Any])->Any:
+        if cmd_obj is None:
+            self.post_message(CMDInterface.UILog("cmd_exe cmd is None"))
+        elif cmd_obj.state == "error":
+            cmd_obj.response_msg
+            self.post_message(CMDInterface.UILog("cmd_exe cmd:"+cmd_obj.name+" "+ ("is None" if (cmd_obj is None) else "has error:"+cmd_obj.response_msg)))
+            return None
+        
+        return func(self,cmd_obj)
+        
+    def create_script_task(self, script_routine:Callable[[...],None]):
+        asyncio.create_task(script_routine())
+    
+    async def calibration_script(self) -> None:
+        # Calibration:
+        # -> promp User to "empty the loadcell"
+        # -> tara command from UI leads to averaged measurement
+        # -> promp User to put "calibration weight" on loadcell
+        # -> scale command for another avrg. meas.
+        # -> save these properties somwhere safe
+        # -> log tara and scale values in UI
+
+        ####################################################### setup variables
+        self.post_message(CMDInterface.UILog("calibration start:"))
+        self.script_state = "setup"
+        self.script_mode = True
+        self.script_name = "calibration"
+        global machine
+
+
+        
+        ####################################################### tara parameter
+        # -> promp User to "empty the loadcell"
+        # -> tara command from UI leads to averaged measurement
+        self.script_state = "tara"
+        self.allowed_script_inputs.append("tara") #tara start
+        self.post_message(CMDInterface.UILog("please empty loadcell and then type \"tara\""))
+
+        while("tara" not in self.ui_script_inputs): # wait for user input
+            await asyncio.sleep(1)
+            #print("wait for tara cmd")
+        self.ui_script_inputs.remove("tara")
+        
+        def setTara(cmd_o:Command):    # function to set machine value
+            global machine
+            machine["tara_weight"] = int(cmd_o.response_msg.split(" ")[1])
+            print("written Tara")
+
+        cmd_obj = await self.create_cmd_await_response("loadcellav 50") #handle enceladus command
+        self.whennoerror(cmd_obj,lambda sel,cmd_o: setTara(cmd_o))
+
+        self.post_message(CMDInterface.UILog("script got tara:"+str(machine["tara_weight"])))
+        self.allowed_script_inputs.remove("tara") #tara end
+
+        ####################################################### scale parameter
+        # -> promp User to put "calibration weight" on loadcell
+        # -> scale command for another avrg. meas.
+        self.script_state = "scale"
+        self.allowed_script_inputs.append("scale") #scale start
+        self.post_message(CMDInterface.UILog("put calibration weight on and then type \"scale\""))
+
+        while("scale" not in self.ui_script_inputs): # wait for user input
+            await asyncio.sleep(1)
+            #print("wait for scale cmd")
+        self.ui_script_inputs.remove("scale")
+        
+        def setScale(cmd_o:Command):    # function to set machine value
+            global machine
+            machine["scale_weight"] = int(cmd_o.response_msg.split(" ")[1])
+        
+        cmd_obj = await self.create_cmd_await_response("loadcellav 50") #handle enceladus command
+        self.whennoerror(cmd_obj,lambda sel,cmd_o: setScale( cmd_o))
+
+        self.post_message(CMDInterface.UILog("script got scale:"+str(machine["scale_weight"])))
+        self.allowed_script_inputs.remove("scale") #scale end
+
+        ####################################################### close down variables
+        self.post_message(CMDInterface.UILog("calibration finished:"))
+        self.script_state = "finished"
+        self.script_name = "None"
+        self.script_mode = False
+    
     async def simple_winding(self): # move this to script container classes
         match self.script_state:
             case "unconnected":
@@ -654,6 +803,7 @@ class CMDInterface(App):
     _ui_cmd_queue:                  Queue = None
     _command_responses_queue:       Queue = None
     _command_send_queue:            Queue = None
+    #Machine().tara_weight = 69
     
 
     def __init__(self, *args, **kwargs):
@@ -677,6 +827,7 @@ class CMDInterface(App):
                 TextLog(id="output",highlight=True,markup=True,classes = "box"),
                 ScrollableContainer(
                     EnceladusSerialWidget(parent=self,send_cmd_queue=self._command_send_queue, meas_filequeue=self._measurements_filewrite_queue,classes = "box"),
+                    MachineWidget(classes = "box"),
                     FileIOTaskWidget(parent=self,meas_filequeue=self._measurements_filewrite_queue,classes = "box"),
                     MachineScriptsWidget(parent=self,ui_cmd_queue=self._ui_cmd_queue,command_responses_queue=self._command_responses_queue,command_send_queue=self._command_send_queue,classes="box"),
                     id="right-vert"
@@ -726,7 +877,6 @@ class CMDInterface(App):
         """
         #print("got message")
         self.query_one(TextLog).write(message.msg)
-
 
 
 if __name__ == "__main__":
