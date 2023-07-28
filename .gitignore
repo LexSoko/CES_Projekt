@@ -1,4 +1,3 @@
 *.pyc
 ~*.bkp
-winder_measurements/*
 Code_Schematics/codeschematic_UML*.txt

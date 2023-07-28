@@ -47,7 +47,10 @@ BAUD_RATE = 57600
 machine = {
     "calibrated"  :False,
     "tara_weight" :None,
-    "scale_weight":None
+    "scale_weight":None,
+    "coilheight"  :-237322,
+    "motorspeed"  :50,
+    "acceleration":10
 }
 
 #TODO extract static functions into utils class
@@ -292,6 +295,16 @@ class EnceladusSerialWidget(Widget):
                     cmd.got_received(data)
                     self.active_cmds.remove(cmd)
             elif(not await self.check_if_cmd_resp_and_handle(data)):
+                # common error is for loadcellstop "no valid command"
+                if( any(c.name == "loadcellstop" for c in self.active_cmds)):
+                    self.post_message(CMDInterface.UILog("resend loadcellstop: "+str(data)))
+                    # get right loadcellstop cmd and resend it
+                    for c in self.active_cmds:
+                        if c.name == "loadcellstop":
+                            self._send_cmd_(c.name)
+
+
+                else:
                     #ok this must be an error
                     self.post_message(CMDInterface.UILog("ser: got: "+str(data)))
                     
@@ -576,6 +589,9 @@ class MachineScriptsWidget(Widget):
                     case "script calibration":
                         # create calibration script
                         self.create_script_task(self.calibration_script)
+                    case "script simple winding":
+                        # create simple winding script
+                        self.create_script_task(self.simple_winding)
             elif(cmd in self.allowed_script_inputs):
                 self.ui_script_inputs.append(cmd)
             else:
@@ -629,10 +645,11 @@ class MachineScriptsWidget(Widget):
     def whennoerror(self,cmd_obj:Command,func:Callable[[MachineScriptsWidget,Command],Any])->Any:
         if cmd_obj is None:
             self.post_message(CMDInterface.UILog("cmd_exe cmd is None"))
+            return False
         elif cmd_obj.state == "error":
             cmd_obj.response_msg
             self.post_message(CMDInterface.UILog("cmd_exe cmd:"+cmd_obj.name+" "+ ("is None" if (cmd_obj is None) else "has error:"+cmd_obj.response_msg)))
-            return None
+            return False
         
         return func(self,cmd_obj)
         
@@ -708,55 +725,88 @@ class MachineScriptsWidget(Widget):
         self.script_name = "None"
         self.script_mode = False
     
-    async def simple_winding(self): # move this to script container classes
-        match self.script_state:
-            case "unconnected":
-                # check if machine is responsive
-                if not self.sent_whoareyou:
-                    await self._command_send_queue.put("whoareyou")
-                    self.sent_whoareyou = True
-                    self.post_message(CMDInterface.UILog("script: connection test started"))
-                
-                else:
-                    if self._serial_widget.active_command["finished"]:
-                        self.received_name = True
-                        self.post_message(CMDInterface.UILog("script:"+"connection test successfull, enter position request"))
-                        self.script_state = "position_request"
+    async def simple_winding(self) -> None:
+        # simple_winding:
+        # -> set speed and acc
+        # -> start loadcell measurement
+        # -> loop 4 times:
+        # ->    run motor forward gotorel -237322
+        # ->    run motor backward gotorelrev -237322
+        # -> stop loadcell measurement
 
 
-            case "position_request":
-                # get current position
-                if not self.sent_pos_req:
-                    await self._command_send_queue.put("getpos")
-                    self.sent_pos_req = True
-                    self.post_message(CMDInterface.UILog("script:"+"sent position request"))
-                
-                else:
-                    if self._serial_widget.active_command["finished"]:
-                        self.received_pos_resp = True
-                        (self.current_pos[0],self.current_pos[1]) = self.parse_pos_resp(self._serial_widget.active_command["response"])
-                        self.post_message(CMDInterface.UILog("script:"+"pos received as "+str(self.current_pos)+ ", enter limit setting"))
-                        self.script_state = "limit_setting"
+        self.post_message(CMDInterface.UILog("simple winding start:"))
+        self.script_state = "setup"
+        self.script_mode = True
+        self.script_name = "simple winding"
+        global machine
+        
+        stepdistance = machine["coilheight"]
+        max_speed = machine["motorspeed"]
+        acc = machine["acceleration"]
+
+        ####################################################### set speed
+        self.script_state = "set speed"
+        self.post_message(CMDInterface.UILog("set speed:"+str(max_speed)))
+        success = False
+        while(not success):
+            cmd_obj = await self.create_cmd_await_response("motorspeed "+str(max_speed)) #handle enceladus command
+            success = self.whennoerror(cmd_obj,lambda sel,cmd_o: True)
 
 
-            case "limit_setting":
-                # set speed, acceleration and position limits
-                if not self.limits_set:
-                    self.post_message(CMDInterface.UILog("script:"+"entered limit setting"))
-                    self.limits_set = True
-                    self.script_state = "finished"
+        ####################################################### set acc
+        self.script_state = "set accel"
+        self.post_message(CMDInterface.UILog("set accel:"+str(acc)))
+        success = False
+        while(not success):
+            cmd_obj = await self.create_cmd_await_response("acceleration "+str(acc)) #handle enceladus command
+            success = self.whennoerror(cmd_obj,lambda sel,cmd_o: True)
 
-            #case "not_on_start_pos":
-                # drive to starting position
-            case "finished":
-                #status = self.serial_handler.exit_script_mode("finished")
-                self.post_message(CMDInterface.UILog("script:"+self.script_state))
-                self.script_mode = False
-                self.script_name = ""
-                self.script_state = "unconnected"
 
-            case _:
-                self.post_message(CMDInterface.UILog("script:"+"unknown status: "+self.script_state))
+
+        ####################################################### start loadcell
+        self.script_state = "start loadcell"
+        self.post_message(CMDInterface.UILog("start loadcell meas"))
+        success = False
+        while(not success):
+            cmd_obj = await self.create_cmd_await_response("loadcellstart") #handle enceladus command
+            success = self.whennoerror(cmd_obj,lambda sel,cmd_o: True)
+
+        k = 0
+        for i in range(2):
+            # ->    run motor forward gotorel -237322
+            k += 1
+            self.post_message(CMDInterface.UILog("winding nr:"+str(k)))
+            success = False
+            while(not success):
+                cmd_obj = await self.create_cmd_await_response("gotorel "+str(-237322)) #handle enceladus command
+                success = self.whennoerror(cmd_obj,lambda sel,cmd_o: True)
+
+            # ->    run motor backward gotorelrev -237322
+            k += 1
+            self.post_message(CMDInterface.UILog("winding nr:"+str(k)))
+            success = False
+            while(not success):
+                cmd_obj = await self.create_cmd_await_response("gotorelrev "+str(-237322)) #handle enceladus command
+                success = self.whennoerror(cmd_obj,lambda sel,cmd_o: True)
+
+        
+    
+        ####################################################### stop loadcell
+        self.script_state = "stop loadcell"
+        self.post_message(CMDInterface.UILog("stop loadcell meas"))
+        success = False
+        while(not success):
+            cmd_obj = await self.create_cmd_await_response("loadcellstop") #handle enceladus command
+            success = self.whennoerror(cmd_obj,lambda sel,cmd_o: True)
+
+
+        self.post_message(CMDInterface.UILog("simple winding end:"))
+        self.script_state = "finished"
+        self.script_mode = False
+        self.script_name = "None"
+
+
     
     def parse_pos_resp(self,response:str)->tuple:
         words = response.split(' ')
