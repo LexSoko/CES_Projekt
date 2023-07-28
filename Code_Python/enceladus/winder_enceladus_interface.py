@@ -5,7 +5,7 @@ import os
 # imports for asyncronous task
 import asyncio
 from asyncio import Queue, QueueEmpty
-from typing import Dict, List
+from typing import Any, Callable, Dict, List
 import aiofiles
 from aiofiles.base import AiofilesContextManager
 import aiofiles.os, aiofiles.ospath
@@ -123,11 +123,16 @@ class CommandFactory(Singleton):
     class StandardCommand(Command):
         def validate_cmd(self) -> str:
             if any([resp in self.response_msg for resp in self.response_keys]):
+                self.state = "finished"
                 #print(self.name+" validates finished")
-                return "finished"
+                #return "finished"
             else:
+                self.state = "error"
                 #print(self.name+" validates error")
-                return "error"
+                #return "error"
+            
+            return self.state
+        
     
     def createStandardCommand(self,cmd:str) -> StandardCommand:
         # check if cmd contains valid cmd key:
@@ -538,6 +543,7 @@ class MachineScriptsWidget(Widget):
                 #
                 # TODO #scripting create simple one liner code for command
                 # generation and response awaiting
+                # think how paralell scripts during scripting phase could be implemented
                 # TODO #scripting make calibration script as first machinescript
                 # and with learned lessons the coil winding script
                 # don't waste your time on Endstops and automatic coil finding
@@ -564,17 +570,35 @@ class MachineScriptsWidget(Widget):
                 # -> loop over all required goto commands
                 # 
                 
-                cmd_obj = CommandFactory().createStandardCommand(cmd)
+                cmd_obj = await self.create_cmd_await_response(cmd)
+                self.whennoerror(cmd_obj,lambda sel,cmd_o: sel.post_message(
+                    CMDInterface.UILog("cmd_exe cmd:"+cmd_obj.state))
+                )
+
+    async def create_cmd_await_response(self, cmd:str)->Command:
+        cmd_obj = CommandFactory().createStandardCommand(cmd)
                 #print("cmd_ex built cmd_obj: "+str(cmd_obj))
-                if cmd_obj is not None:
-                    await self._command_send_queue.put(cmd_obj)
+        if cmd_obj is not None:
+            await self._command_send_queue.put(cmd_obj)
                     #print("cmd_ex sent cmd_obj")
-                    status = await cmd_obj.wait_on_response()
+            status = await cmd_obj.wait_on_response()
                     #print("cmd_ex got response:"+status)
-                    self.post_message(CMDInterface.UILog("command_executor: "+str(cmd)+"-response: "+cmd_obj.response_msg))
+            #self.post_message(CMDInterface.UILog("command_executor: "+str(cmd)+"-response: "+cmd_obj.response_msg))
                     #print("cmd_ex got response end:")
-                else:
-                    self.post_message(CMDInterface.UILog("command_executor: "+cmd+" not a command"))
+        #else:
+            #self.post_message(CMDInterface.UILog("command_executor: "+cmd+" not a command"))
+        
+        return cmd_obj
+    
+    def whennoerror(self,cmd_obj:Command,func:Callable[[MachineScriptsWidget,Command],Any])->Any:
+        if cmd_obj is None or cmd_obj.state == "error":
+            cmd_obj.response_msg
+            self.post_message(CMDInterface.UILog("cmd_exe cmd:"+cmd_obj.name+" "+ ("is None" if (cmd_obj is None) else "has error:"+cmd_obj.response_msg)))
+            return None
+        
+        return func(self,cmd_obj)
+        
+            
                 
     async def simple_winding(self): # move this to script container classes
         match self.script_state:
