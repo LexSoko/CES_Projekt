@@ -337,6 +337,8 @@ class FileIOTaskWidget(Widget):
     #TODO #measurementFiles #Martin
     #
     # type hint filesize here like the other reactives
+    filesize = reactive(int)
+
     
     _measurements_queue:Queue #infinite sizes for now
     @property
@@ -390,10 +392,11 @@ class FileIOTaskWidget(Widget):
         #
         # render filesize here like the other reactives
                 
-        text = """queuesize: {}\nfilenames: {}\nwritespeeds: {}""".format(
+        text = """queuesize: {}\nfilenames: {}\nwritespeeds: {}\nfilesize:  {}""".format(
             self.write_queue_fulliness,
             self.filenames,
-            self.writespeeds
+            self.writespeeds,
+            self.filesize
         )
             
             
@@ -417,12 +420,11 @@ class FileIOTaskWidget(Widget):
                 
                 #TODO #measurementFiles #Martin
                 #
-                # make a reactive property(see self.write_queue_fulliness) named filesize
-                # render it to ui
-                # and update it's value with the filesize here(this line needs to be tested):
-                # self.filesize = aiofiles.os.path.getsize(self.dirname+self.meas_filename)
-                #
+                # make a reactive property(see self.write_queue_fulliness) named filesize       done
+                # render it to ui                                                               done
+                # and update it's value with the filesize here(this line needs to be tested):   #TODO: Max bitte testen
                 
+                self.filesize = aiofiles.os.path.getsize(self.dirname+self.meas_filename)
                 
                 
                 
