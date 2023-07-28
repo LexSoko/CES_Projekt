@@ -353,6 +353,7 @@ class FileIOTaskWidget(Widget):
     max_filesize:int = 1000 # byte
     
     dirname_pattern:str = "./winder_measurements/xxx/"
+    meas_filename_pattern:str = "meas_xxx.csv"
     
     measurement_file_handle:AiofilesContextManager
     meas_filename:str = "meas_xxx.csv"
@@ -369,7 +370,7 @@ class FileIOTaskWidget(Widget):
         self.dirname = self.dirname_pattern
         
         timestring = FileIOTaskWidget.return_time()
-        self.meas_filename = self.meas_filename.replace("xxx",timestring)
+        self.meas_filename = self.meas_filename_pattern.replace("xxx",timestring)
         self.params_filename = self.params_filename.replace("xxx",timestring)
         #print("dirname "+self.dirname)
         #self.directory_name = self.dirname
@@ -412,6 +413,8 @@ class FileIOTaskWidget(Widget):
         # MSH begin
         while True:
             datestring = FileIOTaskWidget.return_date()
+            timestring = FileIOTaskWidget.return_time()
+            self.meas_filename = self.meas_filename_pattern.replace("xxx",timestring)
             self.dirname = self.dirname_pattern.replace("xxx",datestring)
             
             async with aiofiles.open(self.dirname+self.meas_filename, mode='a') as handle:
@@ -429,10 +432,12 @@ class FileIOTaskWidget(Widget):
                     # and update it's value with the filesize here(this line needs to be tested):   #TODO: Max bitte testen
                     
                     self.filesize = await aiofiles.os.path.getsize(self.dirname+self.meas_filename)
+                    print("filesize:"+str(self.filesize))
                     
                     
                     
                     newline = data.rstrip().replace(' ' , ';')
+                    print(newline)
                     await handle.write(newline+"\n")
 
                     self.writespeeds[0] += 1
