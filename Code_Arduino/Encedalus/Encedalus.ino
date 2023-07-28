@@ -156,6 +156,10 @@ int CruiseBackSpeed = 150;             // Default very slow
 
 unsigned long StopWatch_BeginTime = 0;
 
+int endstop = 0;  // value is 0 if no endstop is reached 
+const int mask = 0b01010000;
+int previous_endstopt_val = 0;
+
 /////////////////////////////////////////// Positioning Variables ///////////////////////////////////////
 
 // System Relevant Bools
@@ -1002,12 +1006,30 @@ void ProcessMovement()
     }
 }
 
+void EndstopRead()  // NC_l pin 4, NO_l pin5, NC_r pin6, NO_r pin7; works for ATMEGA382p and ATMEGA16
+{
+  
+  b = ((~PIND) & mask)
+  endstop = (~a) & b 
+  previous_endstopt_val = b 
+}
+
 // Step function gets called with the Timer speed.
 void Step()     
-{  
+{
+    // #TODO: Martin
+    //  function schreiben die hier aufgerufen wird und die endstopps abcheckt
+    //  falls not aus passiert irgendwas 
+    EndstopRead();
+
+    if(endstop):
+      abort();
+    
     ProcessStateMachine();
     ProcessMovement();
 }
+
+
 
 
 /////////////////////////////////////
