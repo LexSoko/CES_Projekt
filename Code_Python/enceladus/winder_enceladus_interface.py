@@ -496,10 +496,11 @@ class FileIOTaskWidget(Widget):
 class MachineWidget(Widget):
     myMachine = reactive(dict)
     
-    def __init__(self,parent:CMDInterface):
+    def __init__(self,parent:CMDInterface,*args, **kwargs):
         global machine
-        self.myMachine = machine
+        #self.myMachine = machine
         self.parentApp = parent
+        super().__init__(*args, **kwargs)
 
     def render(self) -> Align:
         text = str(self.myMachine)
@@ -889,7 +890,7 @@ class CMDInterface(App):
                 TextLog(id="output",highlight=True,markup=True,classes = "box"),
                 ScrollableContainer(
                     EnceladusSerialWidget(parent=self,send_cmd_queue=self._command_send_queue, meas_filequeue=self._measurements_filewrite_queue,classes = "box"),
-                    MachineWidget(classes = "box"),
+                    MachineWidget(parent=self,classes = "box"),
                     FileIOTaskWidget(parent=self,meas_filequeue=self._measurements_filewrite_queue,classes = "box"),
                     MachineScriptsWidget(parent=self,ui_cmd_queue=self._ui_cmd_queue,command_responses_queue=self._command_responses_queue,command_send_queue=self._command_send_queue,classes="box"),
                     id="right-vert"
