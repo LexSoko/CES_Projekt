@@ -30,12 +30,12 @@ import re
 # other imports
 from dataclasses import dataclass,field
 
-class Machine():
-    def __init__(self):
+#class Machine():
+#    def __init__(self):
         # Loadcell parameters
-        self.calibrated:bool = False
-        self.tara_weight:int = None
-        self.scale_weight:int = None
+#        self.calibrated:bool = False
+#        self.tara_weight:int = None
+#        self.scale_weight:int = None
 
     # coil parameters
 
@@ -495,6 +495,11 @@ class FileIOTaskWidget(Widget):
 
 class MachineWidget(Widget):
     myMachine = reactive(dict)
+    
+    def __init__(self,parent:CMDInterface):
+        global machine
+        self.myMachine = machine
+        self.parentApp = parent
 
     def render(self) -> Align:
         text = str(self.myMachine)
@@ -538,7 +543,7 @@ class MachineScriptsWidget(Widget):
         self._command_responses_queue = command_responses_queue
         self._command_send_queue = command_send_queue
         
-        self._serial_widget:EnceladusSerialWidget = None
+        #self._serial_widget:EnceladusSerialWidget = None
         
         # state variables #TODO: move to script container class
         ## positional variables
@@ -555,8 +560,8 @@ class MachineScriptsWidget(Widget):
         super().__init__(*args, **kwargs)
         
     
-    async def set_serial_widget(self, serial:EnceladusSerialWidget):
-        self._serial_widget = serial
+    #async def set_serial_widget(self, serial:EnceladusSerialWidget):
+    #    self._serial_widget = serial
         
     def render(self) -> Align:
         text = """script mode: {}, name: {}, state: {}""".format(
@@ -579,11 +584,12 @@ class MachineScriptsWidget(Widget):
             
             cmd = await self._ui_cmd_queue.get()
             #print("cmd_ex got command: "+cmd)
-            if(not cmd in self.allowed_scripts and not cmd in self.allowed_script_inputs):
+            if(not cmd in self.allowed_scripts and
+               not cmd in self.allowed_script_inputs):
                 cmd_obj = await self.create_cmd_await_response(cmd)
                 self.whennoerror(cmd_obj,lambda sel,cmd_o: sel.post_message(
-                    CMDInterface.UILog("cmd_exe cmd:"+cmd_o.state +"\n->resp:"+cmd_o.response_msg))
-                )
+                    CMDInterface.UILog("cmd_exe cmd:"+cmd_o.state +"\n->resp:"+cmd_o.response_msg)))
+                
             elif(not self.script_mode):
                 match cmd:
                     case "script calibration":
@@ -592,11 +598,14 @@ class MachineScriptsWidget(Widget):
                     case "script simple winding":
                         # create simple winding script
                         self.create_script_task(self.simple_winding)
+                        
             elif(cmd in self.allowed_script_inputs):
-                self.ui_script_inputs.append(cmd)
+                self.forward_to_script(cmd)
+                
             else:
                 #script was called but already one acitve
                 self.post_message(CMDInterface.UILog("cmd_exe: script already running"))
+
             #
             # TODO #scripting think how paralell scripts during scripting phase could be implemented
             #
@@ -627,6 +636,9 @@ class MachineScriptsWidget(Widget):
             # 
             
 
+    def forward_to_script(self, cmd):
+        self.ui_script_inputs.append(cmd)
+    
     async def create_cmd_await_response(self, cmd:str)->Command:
         cmd_obj = CommandFactory().createStandardCommand(cmd)
                 #print("cmd_ex built cmd_obj: "+str(cmd_obj))
@@ -904,12 +916,12 @@ class CMDInterface(App):
             await self._ui_cmd_queue.put(event.value)
             #self.post_message(CMDInterface.UILog(ret))
     
-    @on(Ready)
-    async def handle_ready(self, event:Ready)->None:
-        #print("on ready event")
-        serial_widget = self.query_one(EnceladusSerialWidget)
-        script_widget = self.query_one(MachineScriptsWidget)
-        await script_widget.set_serial_widget(serial_widget)
+    #@on(Ready)
+    #async def handle_ready(self, event:Ready)->None:
+    #    #print("on ready event")
+    #    serial_widget = self.query_one(EnceladusSerialWidget)
+    #    script_widget = self.query_one(MachineScriptsWidget)
+    #    await script_widget.set_serial_widget(serial_widget)
     
     class UILog(Message):
         """Message Class for messages which need to be displayed in
