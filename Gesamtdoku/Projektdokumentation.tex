@@ -29,16 +29,22 @@
 \usepackage[official]{eurosym}
 \usepackage{siunitx}    % SI-Units einbindung
 
-
-
 \geometry{      %holt mehr aus einer A4 Seite raus
     a4paper,
     total={170mm,257mm},
-    left=10mm,
-    right=10mm,
-    top=10mm,
-    bottom=10mm,
+    left=20mm,
+    top=15mm
    }
+
+% \geometry{      %holt noch um einiges mehr aus einer A4 Seite raus
+%     a4paper,
+%     total={170mm,257mm},
+%     left=10mm,
+%     right=10mm,
+%     top=10mm,
+%     bottom=10mm,
+%    }
+
 \graphicspath{ {./graphics/} }  %pfad für bilder
 \hypersetup{colorlinks=false}
 \addbibresource{literatur.bib} %Literatur-Resourcen\s
@@ -185,7 +191,8 @@
 
     % \end{multicols}
 
-
+\tableofcontents
+\newpage
 \input{chapters/Aufgabenstellung.tex}
 \input{chapters/Physikalisches_Systems.tex}
 \input{chapters/Hardware.tex}
@@ -200,5 +207,7 @@
 \input{chapters/Messdaten.tex}
 \input{chapters/Auswertung.tex}
 \input{chapters/Conclusio.tex}
+
+\input{chapters/Apendix.tex}
 
 \end{document}
