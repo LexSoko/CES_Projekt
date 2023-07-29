@@ -294,19 +294,18 @@ class EnceladusSerialWidget(Widget):
                     #print("ckill cmd:"+cmd.name)
                     cmd.got_received(data)
                     self.active_cmds.remove(cmd)
-            elif(not await self.check_if_cmd_resp_and_handle(data)):
-                # common error is for loadcellstop "no valid command"
-                if( any(c.name == "loadcellstop" for c in self.active_cmds)):
-                    self.post_message(CMDInterface.UILog("resend loadcellstop: "+str(data)))
-                    # get right loadcellstop cmd and resend it
-                    for c in self.active_cmds:
-                        if c.name == "loadcellstop":
-                            self._send_cmd_(c.name)
+            elif(not await self.check_if_cmd_resp_and_handle(data) and len(self.active_cmds) > 0):
+                # common error is "no valid command"
+                # restart newest command
+                #if( any(c.name == "loadcellstop" for c in self.active_cmds)):
+                self.post_message(CMDInterface.UILog("resend : "+str(data)))
+                # get right loadcellstop cmd and resend it
+                self._send_cmd_(self.active_cmds[-1].name)
 
 
-                else:
-                    #ok this must be an error
-                    self.post_message(CMDInterface.UILog("ser: got: "+str(data)))
+            else:
+                #ok this must be an error
+                self.post_message(CMDInterface.UILog("ser: got: "+str(data)))
                     
     
     def _send_cmd_(self, cmd:str):
@@ -769,15 +768,15 @@ class MachineScriptsWidget(Widget):
 
         ####################################################### set acc
         self.script_state = "set accel"
-        self.post_message(CMDInterface.UILog("set accel:"+str(acc)))
+        self.post_message(CMDInterface.UILog("set accel:"+str(2)))
         success = False
         while(not success):
-            cmd_obj = await self.create_cmd_await_response("acceleration "+str(acc)) #handle enceladus command
+            cmd_obj = await self.create_cmd_await_response("acceleration "+str(5)) #handle enceladus command
             success = self.whennoerror(cmd_obj,lambda sel,cmd_o: True)
 
 
 
-        ####################################################### start loadcell
+        ###################################################### start loadcell
         self.script_state = "start loadcell"
         self.post_message(CMDInterface.UILog("start loadcell meas"))
         success = False
@@ -792,7 +791,7 @@ class MachineScriptsWidget(Widget):
             self.post_message(CMDInterface.UILog("winding nr:"+str(k)))
             success = False
             while(not success):
-                cmd_obj = await self.create_cmd_await_response("gotorel "+str(-237322)) #handle enceladus command
+                cmd_obj = await self.create_cmd_await_response("gotorel "+str(-200000)) #handle enceladus command
                 success = self.whennoerror(cmd_obj,lambda sel,cmd_o: True)
 
             # ->    run motor backward gotorelrev -237322
@@ -800,12 +799,12 @@ class MachineScriptsWidget(Widget):
             self.post_message(CMDInterface.UILog("winding nr:"+str(k)))
             success = False
             while(not success):
-                cmd_obj = await self.create_cmd_await_response("gotorelrev "+str(-237322)) #handle enceladus command
+                cmd_obj = await self.create_cmd_await_response("gotorelrev "+str(-200000)) #handle enceladus command
                 success = self.whennoerror(cmd_obj,lambda sel,cmd_o: True)
 
         
     
-        ####################################################### stop loadcell
+        ###################################################### stop loadcell
         self.script_state = "stop loadcell"
         self.post_message(CMDInterface.UILog("stop loadcell meas"))
         success = False
