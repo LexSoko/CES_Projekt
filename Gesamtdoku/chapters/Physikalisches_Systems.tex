@@ -1,11 +1,35 @@
 \section{Physikalisches Modell}
 \label{sec:Physikalisches Modell}
 
-\begin{itemize}
-    \item 
-    \item Welche Formeln sollten gültig sein?
-    \item Wie könnte das System modelliert werden?
-    \item Welche möglichen Störgrößen würden Sie erwarten?
-\end{itemize}
-
+% Welche Formeln sollten gültig sein?
+%     \item Wie könnte das System modelliert werden?
+%     \item Welche möglichen Störgrößen würden Sie erwarten?
 % Was für ein System wollen Sie betrachten, was für Gesetzmäßigkeiten liegen vor?
+
+Zylinderspule die parallel gewickelt wird; Draht kann als Raumkurve aufgefasst werden; daraus abgeleitet das Wineklgeschwindigkeit von HA und NA direkt prop. ist;
+
+=> linearer Umrechnungsfaktor zwischen HA und NA
+    Stellkonzept: schnellere Motor wird gesteuert, langsamere folgt mit faktor nachlesen
+
+\begin{equation}
+    \omega_{HA} = \omega_{NA} \cdot \alpha
+\end{equation}
+
+Spannsystem durch angenommen konstante Rückstellkraft der Filzpatschen; Federgetriebener Arm; theoretisch keine Auslenkung bei konst. geschwindigkeit, real schwingt er immer leicht; Feder als immer perfekt vertikal ausgelenkt aproximiert winkel vernachlässigt geschwindigkeitsabhängige Kraft HA-seitig; Draht durch WZ-Kugellager genau 180° Zug nach oben;
+
+=> Kraft am WZ-Kugellager = 2 * Drahtspannung; Winkelungenauigkeiten wurden hier wieder vernachlässigt
+
+\begin{equation}
+    \label{eq:wz_kraft}
+    F_{WZ} = 2 \cdot \tau
+\end{equation}
+
+=> KEINE ERKLÄRUNG BIS JETZT: bei höher kraft von motor biegt arm weiter durch.
+UNBEDINGT ABCHECKEN OB DRAHTSPANNUNGSÄNDERUNG IN DATEN ERSICHTLICH ODER NUR ARMEFFEKT?????
+
+
+Lagenabhängigkeit von Kraft
+
+
+Annahme: Reibungen geschwindigkeitsunabhängige nur Gleit- und Rollreibung, Kräftegleichgewicht nicht geschwindigkeitsabhängige (auser nicht rotationssymetriescher Spulenkörper)
+
