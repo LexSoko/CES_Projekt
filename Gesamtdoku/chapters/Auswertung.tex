@@ -12,9 +12,11 @@ Wickelt man die selbe Wicklung, auf der Spule $SP_K$, zweimal mit unterschiedlic
 \end{figure}
 
 
-Eine mögliche Erklärung für die, in siehe \autoref{fig:plot_const_speed} ersichtliche, Geschwindigkeitsabhängigkeit der Drahtspannungskraft $\tau(v)$, bzw. Rückstellkraft $F_R(v)$, wäre, dass sich die Reibung an Filz !!!!!!!!!!!!! \newline
-% #TODO:Schreiben
-% Einfügen erklärung filz wie gas reibung und Erklärung kugellageröl viskosität
+Eine mögliche Erklärung für die, in siehe \autoref{fig:plot_const_speed} ersichtliche, Geschwindigkeitsabhängigkeit der Drahtspannungskraft $\tau(v)$, bzw. Rückstellkraft $F_R(v)$, wäre, dass irgendwo im System eine Geschwindigkeitsabhängige Reibung vorkommt.
+Geschwindigkeitsabhängige Reibungskräfte sind zum beispiel in der Aerodynamik als Luftwiderstand bekannt.
+Unsere Annahme ist daher, dass entweder die Reibung, die durch das Öl in den V-Nut Kugellagern entsteht relativ groß ist, oder was wahrscheinlicher ist, dass die Reibungskraft des Filzes geschwindigkeitsabhängig ist.
+Dies wiederum erklärten wir uns durch die Rückstellkräfte einzelner Filzfaser, die ähnlich auf den Faden drücken wie Fahrtwinddruck auf ein Auto.
+
 
 
 Für den nächsten Versuch wurden die selbe Wicklung, bei gleichbleibenden Wickelparametern, einmal mit Dancerarm und einmal ohne, je für beide Spulenkörper, durchgeführt. Da die Zeit zwischen zwei Messwerten nicht konstant ist, sondern leicht schwankt (für Erklärung siehe \autoref{sec:Messschleife}), wurden die Daten Interpoliert, um äquidistante Messwertschritte zu erhalten. Danach wurde jeweils eine Fast-Fourier-Transformation $FFT$ durchgeführt und das Ergebnis in \autoref{fig:ffts} dargestellt.
@@ -26,10 +28,12 @@ Für den nächsten Versuch wurden die selbe Wicklung, bei gleichbleibenden Wicke
     \label{fig:ffts}
 \end{figure}
 
-Betrachtet man die zwei, $SP_K$, zugehörigen Graphen, in \autoref{fig:ffts}, so sieht man, dass es keinen signifikanten Unterschied gibt wenn der Dancerarm nicht verwendet wird. Der Einfluss der, in \autoref{sec:Physikalisches Modell} vermuteten, abklingenden Schwingung, angeregt durch den Wechsel von Haft- zu Gleitreibung, scheint vergleichsweise wenig Einfluss auf die Schwingung der Drahtspannung zu haben. Sieht man sich hingegen die zwei Graphen von $SP_Q$ an, so fallen sofort die deutlichen Peaks in der $FFT$ auf  welche auf das periodische Schwingen der Drahtspannung hindeuten.
+Betrachtet man die zwei, $SP_K$, zugehörigen Graphen, in \autoref{fig:ffts}, so sieht man, dass es keinen signifikanten Unterschied gibt wenn der Dancerarm nicht verwendet wird.
+Der Einfluss der, in \autoref{sec:Physikalisches Modell} vermuteten, abklingenden Schwingung, angeregt durch den Wechsel von Haft- zu Gleitreibung, scheint vergleichsweise wenig Einfluss auf die Schwingung der Drahtspannung zu haben.
+Sieht man sich hingegen die zwei Graphen von $SP_Q$ an, so fallen sofort die deutlichen Peaks in der $FFT$ auf  welche auf das periodische Schwingen der Drahtspannung hindeuten.
 
-% #TODO: Interpretation der konkreten Frequenzen, nachdem die Frequenz der HA eingefügt wurde
-ds\newline
+Die Peaks bei ca. 1 Hz ist auf die Unwuchtigkeit der Hauptachse, der bei ca. 4 Hz Auf die 4 Ecken des Spulenkörpers zurückzuführen.
+Bei den restlichen Peaks dürfte es sich um Obertöne handeln, welche ganzzahlige vielfache der Grundfrequenz 1 Hz sind.
 
 Zur Untersuchung der Start-, bzw. Abbremsphasen eines Wickeldurchganges sind in \autoref{fig:plot_beschleunigung} die zwei Phasen, je für beide Spulentypen dargestellt. Die Messungen wurde jeweils mit der selben Beschleunigung und Endgeschwindigkeit durchgeführt.
 
