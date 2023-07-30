@@ -67,6 +67,7 @@ latex_dict = {
     "alph_NA":r"$\alpha_{NA}$ / ° s$^{-2}$",
     "amp":r"Amplitude $F_{WZ}(f)$ / willkürliche Einheiten",
     "freq":r"$f$ / Hz",
+    "millis":r"t / ms"
 }
 
 for meas in df_dict.values():
@@ -77,8 +78,8 @@ for meas in df_dict.values():
     meas["phi_HA"] = meas["step_ha"] * (360.0/1600.0)                       # one stepper revolution is 1600 steps (200 * 8)
     meas["phi_NA"] = meas["step_la"] * (360.0/1600.0) 
 
-    meas["omeg_HA"] = calc_deriv(meas["phi_HA"],meas["millis"],1)           # winkelgeschwindigkeit
-    meas["omeg_NA"] = calc_deriv(meas["phi_NA"],meas["millis"],1)
+    meas["omeg_HA"] = calc_deriv(meas["phi_HA"],meas["millis"],1) *1000           # winkelgeschwindigkeit
+    meas["omeg_NA"] = calc_deriv(meas["phi_NA"],meas["millis"],1) *1000
 
     meas["alph_HA"] = calc_deriv(meas["omeg_HA"],meas["millis"],1)          # winkelbeschleunigung
     meas["alph_NA"] = calc_deriv(meas["omeg_NA"],meas["millis"],1)
@@ -127,40 +128,41 @@ omeg_u_50_yes = df_const_speed_yes_spring_50["omeg_HA"].std()
 omeg_u_25_yes = df_const_speed_yes_spring_25["omeg_HA"].std()
 
 
-#fig_const = plt.figure(figsize=(9,9))
-#ax_const = fig_const.add_subplot()
-#
-#ax_const.scatter(df_const_speed_no_spring_50["omeg_HA"],df_const_speed_no_spring_50["F_WZ"],c="red",alpha=0.05)
-#ax_const.scatter(df_const_speed_no_spring_25["omeg_HA"],df_const_speed_no_spring_25["F_WZ"],c="red",alpha=0.05)
-#ax_const.scatter(df_const_speed_yes_spring_50["omeg_HA"],df_const_speed_yes_spring_50["F_WZ"],c="green",alpha=0.05)
-#ax_const.scatter(df_const_speed_yes_spring_25["omeg_HA"],df_const_speed_yes_spring_25["F_WZ"],c="green",alpha=0.05)
-#
-#ax_const.errorbar(omeg_m_50_no, F_m_50_no, xerr=omeg_u_50_no, yerr =F_u_50_no, label="no spring", c="red")
-#ax_const.errorbar(omeg_m_25_no, F_m_25_no, xerr=omeg_u_25_no, yerr =F_u_25_no, label="no spring", c="red")
-#ax_const.errorbar(omeg_m_50_yes, F_m_50_yes, xerr=omeg_u_50_yes, yerr =F_u_50_yes, label="with spring" ,c="green")
-#ax_const.errorbar(omeg_m_25_yes, F_m_25_yes, xerr=omeg_u_25_yes, yerr =F_u_25_yes, label="with spring" ,c="green")
-#
-#ax_const.set_xlabel(latex_dict["omeg_HA"])
-#ax_const.set_ylabel(latex_dict["F_WZ"])
-#ax_const.legend()
-#ax_const.grid()
-#
-#
-#fig_const.savefig(graphicsdir+"const_speed.pdf",dpi="figure")
+fig_const = plt.figure(figsize=(9,9))
+ax_const = fig_const.add_subplot()
+
+ax_const.scatter(df_const_speed_no_spring_50["omeg_HA"],df_const_speed_no_spring_50["F_WZ"],c="red",alpha=0.05)
+ax_const.scatter(df_const_speed_no_spring_25["omeg_HA"],df_const_speed_no_spring_25["F_WZ"],c="red",alpha=0.05)
+ax_const.scatter(df_const_speed_yes_spring_50["omeg_HA"],df_const_speed_yes_spring_50["F_WZ"],c="green",alpha=0.05)
+ax_const.scatter(df_const_speed_yes_spring_25["omeg_HA"],df_const_speed_yes_spring_25["F_WZ"],c="green",alpha=0.05)
+
+ax_const.errorbar(omeg_m_50_no, F_m_50_no, xerr=omeg_u_50_no, yerr =F_u_50_no, label=r"$SP_K$ no spring", c="red")
+ax_const.errorbar(omeg_m_25_no, F_m_25_no, xerr=omeg_u_25_no, yerr =F_u_25_no, label=r"$SP_K$ no spring", c="red")
+ax_const.errorbar(omeg_m_50_yes, F_m_50_yes, xerr=omeg_u_50_yes, yerr =F_u_50_yes, label=r"$SP_K$ with spring" ,c="green")
+ax_const.errorbar(omeg_m_25_yes, F_m_25_yes, xerr=omeg_u_25_yes, yerr =F_u_25_yes, label=r"$SP_K$ with spring" ,c="green")
+
+ax_const.set_xlabel(latex_dict["omeg_HA"])
+ax_const.set_ylabel(latex_dict["F_WZ"])
+ax_const.legend()
+ax_const.grid()
+
+
+fig_const.savefig(graphicsdir+"const_speed.pdf",dpi="figure")
 
 
 ##### auswertung 2 ffts für auswirkungen feder
-# datensätze:
-#  mess1 und 2 mit speed 50
 TIME_INTERVAL_INTERPOL = 12.5           #ms
 zyl_no__fed = interpol(df_const_speed_no_spring_50,TIME_INTERVAL_INTERPOL)
 zyl_yes_fed = interpol(df_const_speed_yes_spring_50,TIME_INTERVAL_INTERPOL)
 quad_no__fed = interpol(df_const_speed_no_spring_50_quad,TIME_INTERVAL_INTERPOL)
 quad_yes_fed = interpol(df_const_speed_yes_spring_50_quad,TIME_INTERVAL_INTERPOL)
 
+mean_frequencies = [df["omeg_HA"].mean()/360 for df in [zyl_no__fed, zyl_yes_fed, quad_no__fed, quad_yes_fed]]
+
 
 fig_ffts = plt.figure(figsize=(9,9))
-legenden = ["zyl. ohne Feder","zyl. mit Feder","quad. ohne Feder","quad. mit Feder"]
+legenden = [r"$SP_K$ ohne Feder",r"$SP_K$ mit Feder",r"$SP_Q$ ohne Feder",r"$SP_Q$ mit Feder"]
+
 
 for i,df in enumerate([zyl_no__fed, zyl_yes_fed, quad_no__fed, quad_yes_fed]):
     N = len(df.index)
@@ -170,7 +172,7 @@ for i,df in enumerate([zyl_no__fed, zyl_yes_fed, quad_no__fed, quad_yes_fed]):
     df["freq"] = fftfreq(N, TIME_INTERVAL_INTERPOL/1000)
 
     ax_ffts = fig_ffts.add_subplot(221+i)
-    ax_ffts.plot(df["freq"],df["amp"],label=legenden[i])
+    ax_ffts.plot(df["freq"],df["amp"],label=legenden[i]+"\n"+r"bei $\omega_{HA}$ = "+"{:.2} Hz".format(mean_frequencies[i]))
 
 
     ax_ffts.set_xlabel(latex_dict["freq"])
@@ -183,20 +185,42 @@ for i,df in enumerate([zyl_no__fed, zyl_yes_fed, quad_no__fed, quad_yes_fed]):
 fig_ffts.savefig(graphicsdir+"ffts.pdf",dpi="figure")
 
 
-#ax_ffts.set_xlabel(latex_dict["omeg_HA"])
-#ax_ffts.set_ylabel(latex_dict["F_WZ"])
-#ax_ffts.set_xlimit(0,10)
-#ax_ffts.legend()
-#ax_ffts.grid()
+
+##### auswertung 3 beschleunigungsphasen
+t_intervals_acc = {
+    "bs_zyl":[41880,46500],
+    "br_zyl":[74600,80000],
+    "bs_quad":[129300,134000],
+    "br_quad":[199000,204000],
+}
+
+bs_zyl = filter_df(df_dict["mess1"],"millis",t_intervals_acc["bs_zyl"][0],t_intervals_acc["bs_zyl"][1])
+br_zyl = filter_df(df_dict["mess1"],"millis",t_intervals_acc["br_zyl"][0],t_intervals_acc["br_zyl"][1])
+bs_quad = filter_df(df_dict["mess3"],"millis",t_intervals_acc["bs_quad"][0],t_intervals_acc["bs_quad"][1])
+br_quad = filter_df(df_dict["mess3"],"millis",t_intervals_acc["br_quad"][0],t_intervals_acc["br_quad"][1])
+
+bs_zyl.plot.scatter(x="millis",c="omeg_HA",title="bs_zyl",y="F_WZ",cmap="viridis_r")
+br_zyl.plot.scatter(x="millis",c="omeg_HA",title="br_zyl",y="F_WZ",cmap="viridis_r")
+bs_quad.plot.scatter(x="millis",c="omeg_HA",title="bs_quad",y="F_WZ",cmap="viridis_r")
+br_quad.plot.scatter(x="millis",c="omeg_HA",title="br_quad",y="F_WZ",cmap="viridis_r")
 
 
 
 
+fig_besch = plt.figure(figsize=(9,9))
+legenden = [r"$SP_K$ beschl.",r"$SP_Q$ beschl.",r"$SP_K$ brems.",r"$SP_Q$ brems."]
+axes = []
+for i,df in enumerate([bs_zyl, bs_quad, br_zyl, br_quad]):
 
 
-#  mess3 und 4 mit speed 50 
+    ax_besch = fig_besch.add_subplot(221+i)
+
+    ax_besch.scatter(df["millis"]-df["millis"].min(),df["F_WZ"],c=df["omeg_HA"],cmap="viridis_r",label=legenden[i])
+
+    ax_besch.set_xlabel(latex_dict["millis"])
+    ax_besch.set_ylabel(latex_dict["F_WZ"])
+    ax_besch.legend()
 
 
-# daten interpolieren
-
+fig_besch.savefig(graphicsdir+"besch.pdf",dpi="figure")
 #plt.show()
