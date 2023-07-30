@@ -7,23 +7,25 @@
 % #TODO: Bilder mit Pfeilen und Text versehen
 
 
-\begin{wrapfigure}{R}{0.55\textwidth}
+
+
+\begin{wrapfigure}{L}{0.3\textwidth}
     \centering
-    \includegraphics[width=0.55\textwidth]{./winder_render.png}
+    \includegraphics[width=0.3\textwidth]{./spannplatte_render.jpg}
+    \caption{CAD-Render des Spannsystems ohne Feder}
 \end{wrapfigure}
 Da es den Rahmen der Dokumentation sprengen würde, wird hier nur auf das grundlegende mechanische System, sowie auf dessen Umsetzung eingeganngen. Bei weiteren Interresse wird auf den Anhang verwiesen. Aufgeteilt ist das Projekt in zwei mechanische Untersyteme, das Drahtspannsystem und der Winder.\newline
 Beide Systeme wurden mit 3D-Druck-Teilen aus PETG und Frästeilen aus MDF gebaut und mithilfe unterschiedlicher Schraubsysteme verbunden. Mit Ausnahme der Kaufteile und der Aufnahmewelle (siehe \autoref{appx:mechanik} \autoref{fig:aufnahmedorn_schnitt}), welcher aus hochfestem Stahl passgenau gedreht wurde.
 \newline
 Der Winder besteht aus einer reinen Drehachsen, sowie einem Lineartisch (siehe \autoref{appx:mechanik} \autoref{fig:linearstisch}) mit gekoppelter Trapetzspindel. Beide Achsen werden jeweils durch einen Steppermotor bewegt. Für die Spulenwicklung, wird der Spulenkörper am Linksgewinde der Aufnahmewelle befestigt und die Achse vom Motor im Uhrzeigersinn gedreht. Die Trapetzspindel kann hingegen in beide Richtungen gedreht werden, bzw. der Lineartisch in beide Richtungen fahren, wodurch die Position des, durch den am Tisch befestigten Aufnahmedorn laufenden, Drahtes, relativ zum Spulenkörper, verändert werden kann. Der Aufnahmedorn (siehe \autoref{appx:mechanik} \autoref{fig:drahtfuehrungsdorn_schnitt}) ist dreiteilig und besteht aus einer Röhre mit Ausengewinde, einer Abdeckkappe mit Innengewinde und einem Einlageblatt aus Teflon. Das Einlageblatt wurde mit einer CNC-Fäse hergestellt und passt genau in die Innepassung der Aufnahmedornröhre. In der Mitte wurde mit einem Feinbohrer ein 0.5~\si{\milli\metre} starkes Loch, zur Führung des Drahtes, gebohrt.
 Des Weiteren ist am Lineartisch ein Rotary-Encoder verbaut, sowie ein Gleitlager zur Drahtführung. Sowohl die Gleitlagerhalterung nahe dem Encoder, als auch der Aufnahmedorn, enthalten im Inneren einen Einsatz aus Teflon, um die Reibung zwischen Draht und Führung klein zu halten und Abreibung der Drahtisolation zu vermeiden.\newline
-% \begin{wrapfigure}{L}{0.25\textwidth}
-%     \centering
-%     \includegraphics[width=0.25\textwidth]{./spannplatte_render.jpg}
-% \end{wrapfigure}
+
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.25\textwidth]{./spannplatte_render.jpg}
-    \caption{a nice plot}
+    \includegraphics[width=0.6\textwidth]{./winder_render.png}
+    \caption{CAD-Render des Automatic-Coil-Winder ohne Rotary Encoder}
     \label{fig:winder_render}
 \end{figure}
+
+
 Um einen gleimäßige Wicklung zu gewährleisten, muss die Drahtspannung einstellbar sein und von dieser Idealspannung nur in einem kleinen/bekannten Intervall abweichen. Hierzu wird die Rückstellkraft die auf den Draht wirkt durch zwei Schrauben, welche zwei mit Filz beklebte Platten zusammendrückt, eingestellt. Der Draht wird anschließend durch drei Kugellager geführt, wobei das zweite auf einer Wägezelle montiert ist und die Positionierung so gewählt ist, dass ein- und auslaufender Draht, am Kugellager der Wägezelle, ca. einen Winkel von 180° einschließen. Danach wird der Draht über ein weiteres Kugellager, montiert auf einer, mittels Langloch arritierbaren, Leiste, geführt. Von dort aus läuft er über das letzte Lager, welches am Tänzerarm befestigt ist. Dieser Arm ist kugelgelagert und ca. in der Mitte mit einer Feder verbunden. An dieser Feder ist an ihrem anderen Ende eine Schnur befestigt, welche durch einen Steppermotor aufgewickelt werden kann, um so die Feder zu spannen. Der bewegliche Arm kann somit dynamisch auf Drahtspannugsänderungen reagieren.
