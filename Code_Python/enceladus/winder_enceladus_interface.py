@@ -30,16 +30,6 @@ import re
 # other imports
 from dataclasses import dataclass,field
 
-#class Machine():
-#    def __init__(self):
-        # Loadcell parameters
-#        self.calibrated:bool = False
-#        self.tara_weight:int = None
-#        self.scale_weight:int = None
-
-    # coil parameters
-
-    # machinebounds
 
 # Important constants for Serial comm
 COM_PORT = "COM9"
@@ -54,9 +44,6 @@ machine = {
 }
 
 #TODO extract static functions into utils class
-
-#TODO #scripting create initialization\calibration scripts
-#TODO #scripting write the simple coil winding script
 #TODO #scripting #measurementFiles add script phase logging
 
 ########### datastructures and object factories ############
@@ -186,8 +173,6 @@ class EnceladusSerialWidget(Widget):
     handling serial interface to enceladus and autonomos controll of
     the coilwinder
     """
-    #TODO #serial finish serial interface
-    #TODO #serial add missing calibration, settings, control commands and measurement packets
     
     # reactives
     datarate_in = reactive(0)
@@ -225,16 +210,6 @@ class EnceladusSerialWidget(Widget):
                     #print("really got command")
                     #print(cmd)
                     pass
-                
-            #Only for Testing begin
-            #     match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", cmd.full_cmd)
-            #     if(match_obj != None):
-            #        match_obj_str = match_obj.group()
-            #        await self._measurement_file_queue.put(match_obj_str)
-            #        print("put data in queue:"+match_obj_str)
-            #     else:
-            #         self.post_message(CMDInterface.UILog(cmd.full_cmd)) #TODO: Max ich hoff des stimmt das Messdaten nicht als message gesendet werden?
-            # Only for Teting end
                 
             except QueueEmpty:
                 pass
@@ -282,7 +257,7 @@ class EnceladusSerialWidget(Widget):
             #print(line)
             data = line.replace("\\r\\n\'","").replace("b\'","")
             #print("ser: got msg: "+data)
-            #MSH begin
+
             match_obj = re.search("(^m [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+ [-]?[0-9]+)[\s]*$", data)
             if(match_obj != None and match_obj.group() != ""):
                 match_obj_str = match_obj.group()
@@ -434,13 +409,8 @@ class FileIOTaskWidget(Widget):
         if not os.path.exists(self.dirname):
             os.makedirs(self.dirname)
         
-        
-        # async with aiofiles.open(self.dirname+self.meas_filename, mode='a') as handle:
-        
-        # MSH begin
+
         while True:
-            #TODO: #Martin update the filenames reactive with new filenames
-            #TODO: #Martin close and open same file after data block of size blocksize is written
             timestring = FileIOTaskWidget.return_time()
             self.meas_filename = self.meas_filename_pattern.replace("xxx",timestring)
             self.filesize = 0   # byte
@@ -467,7 +437,8 @@ class FileIOTaskWidget(Widget):
                     # P.S.: Like a STM operator esoterically places aluminum Foil on it's
                     #       big microscopic device, I myself esoterically place critical
                     #       code in the quiet neighbourhood of loop iteration begendings.
-                    #       LG Jax Most                                                                     sadly no aluminium was found :(
+                    #       LG Jax Most                                                                     sadly no aluminium was found :( 
+                    #                                                                                       LG Martin
                     #
         
     async def open_measurements_file(self):
@@ -605,35 +576,6 @@ class MachineScriptsWidget(Widget):
             else:
                 #script was called but already one acitve
                 self.post_message(CMDInterface.UILog("cmd_exe: script already running"))
-
-            #
-            # TODO #scripting think how paralell scripts during scripting phase could be implemented
-            #
-            # TODO #scripting make calibration script as first machinescript
-            # and with learned lessons the coil winding script
-            # don't waste your time on Endstops and automatic coil finding
-            # RESULTS ARE MORE TIMECRITICAL!!
-            #
-            # Calibration:
-            # -> promp User to "empty the loadcell"
-            # -> tara command from UI leads to averaged measurement
-            # -> promp User to put "calibration weight" on loadcell
-            # -> scale command for another avrg. meas.
-            # -> save these properties somwhere safe
-            # -> log tara and scale values in UI
-            # 
-            # First Winding:
-            # -> drive to one coil ending manually (with prompt)
-            # -> UI cmd SetPos2
-            # -> drive to other coil ending manually (with prompt)
-            # -> UI cmd SetPos1
-            # -> prompt user for coil_diameter, coil_height, cable_diameter
-            #                   winding number, spannsystemparameters, phases to log
-            # -> calculate winding speeds, for constant cable throughput
-            # -> prompt user if the calculated speed is ok and can be driven safely
-            # -> start the buisiness:
-            # -> loop over all required goto commands
-            # 
             
 
     def forward_to_script(self, cmd):

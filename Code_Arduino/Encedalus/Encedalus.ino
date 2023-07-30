@@ -1042,9 +1042,6 @@ void EndstopRead()  // NC_l pin5, NO_l pin4, NC_r pin7, NO_r pin6; works for ATM
 // Step function gets called with the Timer speed.
 void Step()     
 {
-    // #TODO: Martin
-    //  function schreiben die hier aufgerufen wird und die endstopps abcheckt
-    //  falls not aus passiert irgendwas 
     EndstopRead();
 
     if(endstop) Abort();
