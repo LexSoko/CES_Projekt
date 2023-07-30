@@ -33,7 +33,7 @@
     a4paper,
     total={170mm,257mm},
     left=20mm,
-    top=15mm
+    top=25mm,
    }
 
 % \geometry{      %holt noch um einiges mehr aus einer A4 Seite raus
@@ -159,15 +159,15 @@
 
 %\date{\vspace{-1cm}\today{}, Graz}
 \date{}
-\author{Aleksey Sokolov, Max Jost, Martin Steiner}
+\author{Max Jost, Martin Steiner}
 \title{\vspace{-1.5cm}Automatic Coil Winder}
 
-%---------------HEADER TEXT------------------------------------
-%\clearpairofpagestyles
-%\ihead{\today{} \\ }
-%\chead{Max Jost / Aleksey Sokolov / Martin Steiner\\ Projektname }
-%\ohead{CES \\ }
-%\cfoot{\pagemark \, / \, \pageref{LastPage}}
+% ---------------HEADER TEXT------------------------------------
+\clearpairofpagestyles
+\ihead{\today{} \\ }
+\chead{Max Jost / Martin Steiner\\ Projektname }
+\ohead{CES \\ }
+\cfoot{\pagemark \, / \, \pageref{LastPage}}
 
 %---------------DOCUMENT TEXT------------------------------------
 \begin{document}
@@ -191,13 +191,13 @@
 
     % \end{multicols}
 
+\maketitle
 \tableofcontents
 \newpage
+
 \input{chapters/Aufgabenstellung.tex}
 \input{chapters/Mechanik.tex}
-\newpage
 \input{chapters/Hardware.tex}
-\newpage
 \input{chapters/Physikalisches_Systems.tex}
 \input{chapters/Messablauf.tex}
 \input{chapters/Messschleife.tex}
