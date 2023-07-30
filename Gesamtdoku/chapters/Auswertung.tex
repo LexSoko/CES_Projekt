@@ -2,8 +2,6 @@
 \label{sec:Auswertung}
 
 Wurde im Folgenden ein Versuch ohne Dancerarm durchgeführt, so wurde der Draht direkt über das Kugellager der darunter liegenden Leiste geführt. Des weiteren gilt für alle folgenden Graphiken, dass die Unsicherheitsbalken stets die einfache Standardabweichung angebegen.\newline
-
-
 Wickelt man die selbe Wicklung, auf der Spule $SP_K$, zweimal mit unterschiedlicher Geschwindigkeit, so wird der, bereits in \autoref{sec:Physikalisches Modell} erwähnte, Effekt einer geschwindigkeitsabhängigen Drahtspannung , bzw. Rückstellkraft $F_R$ sichtbar. Der Versuch wurde je einmal mit Dancerarm und einmal ohne Dancerarm durchgeführt.
 
 \begin{figure}[H]
@@ -12,33 +10,26 @@ Wickelt man die selbe Wicklung, auf der Spule $SP_K$, zweimal mit unterschiedlic
     \caption{Darstellung der an der Wägezelle gemessenen Kraft während einer Wickelphase mit vorgegebener, konstanter Geschwindigkeit, $F_{WZ}$ in Abhängigkeit von der Winkelgeschwindigkeit der Hauptachse $\omega_{HA}$. Die, mit Unsicherheitsbalken versehenen, vier Datenpunkte beschreiben jeweils das arithmetische Mittel des angegeben Größe.}
     \label{fig:plot_const_speed}
 \end{figure}
-% \begin{wrapfigure}{l}{0.6\textwidth}
-%     \centering
-%     \includegraphics[width=0.6\textwidth]{./const_speed.pdf}
-%     \label{fig:plot_const_speed}
-% \end{wrapfigure}
+
 
 Eine mögliche Erklärung für die, in siehe \autoref{fig:plot_const_speed} ersichtliche, Geschwindigkeitsabhängigkeit der Drahtspannungskraft $\tau(v)$, bzw. Rückstellkraft $F_R(v)$, wäre, dass sich die Reibung an Filz !!!!!!!!!!!!! \newline
 % #TODO:Schreiben
 % Einfügen erklärung filz wie gas reibung und Erklärung kugellageröl viskosität
 
 
-Für den nächsten Versuch wurden die selbe Wicklung, bei gleichbleibenden Wickelparametern, einmal mit Dancerarm und einmal ohne, je für beide Spulenkörper, durchgeführt. 
+Für den nächsten Versuch wurden die selbe Wicklung, bei gleichbleibenden Wickelparametern, einmal mit Dancerarm und einmal ohne, je für beide Spulenkörper, durchgeführt. Da die Zeit zwischen zwei Messwerten nicht konstant ist, sondern leicht schwankt (für Erklärung siehe \autoref{sec:Messschleife}), wurden die Daten Interpoliert, um äquidistante Messwertschritte zu erhalten. Danach wurde jeweils eine Fast-Fourier-Transformation $FFT$ durchgeführt und das Ergebnis in \autoref{fig:ffts} dargestellt.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{./ffts.pdf}
+    \caption{Darstellung der $FFTs$ für beide Spulenkörper, je einmal ohne Dancerarm und einmal mit Arm}
+    \label{fig:ffts}
+\end{figure}
 
-% \begin{figure}[H]
-%     \centering
-%     \includegraphics[width=0.25\textwidth]{./winder_render.png}
-%     \caption{a nice plot}
-%     \label{fig:winder_render}
-% \end{figure}
-% \begin{wrapfigure}{l}{0.35\textwidth}
-%     \centering
-%     \includegraphics[width=0.35\textwidth]{./spannplatte_render.jpg}
-% \end{wrapfigure}
+Betrachtet man die zwei, $SP_K$, zugehörigen Graphen, in \autoref{fig:ffts}, so sieht man, dass es keinen signifikanten Unterschied gibt wenn der Dancerarm nicht verwendet wird. Der Einfluss der, in \autoref{sec:Physikalisches Modell} vermuteten, abklingenden Schwingung, angeregt durch den Wechsel von Haft- zu Gleitreibung, scheint vergleichsweise wenig Einfluss auf die Schwingung der Drahtspannung zu haben. Sieht man sich hingegen die zwei Graphen von $SP_Q$ an, so fallen sofort die deutlichen Peaks in der $FFT$ auf  welche auf das periodische Schwingen der Drahtspannung hindeuten.
 
+% #TODO: Interpretation der konkreten Frequenzen, nachdem die Frequenz der HA eingefügt wurde
 
-% Text erklärung des Bildes
 
 
 
