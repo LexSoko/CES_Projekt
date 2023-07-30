@@ -5,6 +5,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.fft import rfft, rfftfreq
+from scipy.fft import fft, fftfreq
 
 graphicsdir="Gesamtdoku/graphics/"
 dirname = "winder_measurements/auswertung/"
@@ -163,18 +164,29 @@ legenden = ["zyl. ohne Feder","zyl. mit Feder","quad. ohne Feder","quad. mit Fed
 
 for i,df in enumerate([zyl_no__fed, zyl_yes_fed, quad_no__fed, quad_yes_fed]):
     N = len(df.index)
-    df["amp"] = abs(rfft(df["mN_load"].values))
+    df["amp"] = abs(fft(df["F_WZ"].values))
     df["amp"] = df["amp"] / df["amp"].max()
 
-    df["freq"] = rfftfreq(N, TIME_INTERVALL/1000)
+    df["freq"] = fftfreq(N, TIME_INTERVAL_INTERPOL/1000)
 
     ax_ffts = fig_ffts.add_subplot(221+i)
     ax_ffts.plot(df["freq"],df["amp"],label=legenden[i])
 
 
-ax_ffts.set_xlabel(latex_dict["omeg_HA"])
-ax_ffts.set_ylabel(latex_dict["F_WZ"])
-ax_ffts.legend()
+    ax_ffts.set_xlabel(latex_dict["freq"])
+    ax_ffts.set_ylabel(latex_dict["amp"])
+    ax_ffts.set_xlim(0,10)
+    ax_ffts.set_ylim(0,0.1)
+    ax_ffts.legend()
+
+
+fig_ffts.savefig(graphicsdir+"ffts.pdf",dpi="figure")
+
+
+#ax_ffts.set_xlabel(latex_dict["omeg_HA"])
+#ax_ffts.set_ylabel(latex_dict["F_WZ"])
+#ax_ffts.set_xlimit(0,10)
+#ax_ffts.legend()
 #ax_ffts.grid()
 
 
@@ -187,4 +199,4 @@ ax_ffts.legend()
 
 # daten interpolieren
 
-plt.show()
+#plt.show()
