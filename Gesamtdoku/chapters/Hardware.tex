@@ -1,19 +1,15 @@
 \section{Hardware}
 \label{sec:Hardware}
 
-
-
-
-
 \subsection{Sensoren}
 
 Zur Messung der Drahtspannungskraft wird eine Wägezelle verwendet, mit Messbereich 0-1kg verwendet. Der Sensor besteht aus einem Metallblock mit zwei Bohrungen. Auf der ober und unter Seite des Blocks sind jeweils zwei Dehnmessstreifen einer 'Wheatstone Bridge' befestigt. Wird der Sensor durch Krafteinwirkung gebogen, so kann eine Spannungsänderung an den zwei abgegriffen Punkten $A^+$ und $A^-$ (siehe \autoref{fig:schaltplan}) eine Änderung der Spannung gemessen werden. Diese verhält sich im Messbereich annähernd linear. Durch Austesten konnte festgestellt werden, dass die Auflösung bei ca. 0.5~g liegt. Die Kalibrierung des Sensors wird in \autoref{sec:Messablauf} beschrieben.\newline
 Ausgelesen wird der Sensor mittels eines 24-Bit-ADC´s am HX711-Board, von welchem die Daten danach über eine Serielleschnittstelle auf den Microcontroller und danach per USB an den Computer übertragen werden. Eine genauere Beschreibung der technischen Messumsetzung ist in \autoref{sec:Messschleife} ersichtlich. 
 
 
-Weiters wurden zwei Endstopps verwendet. Diese sind einfache Taster welche ein Signal
+Weiters wurden zwei Endstopps verwendet. Diese sind einfache Taster welche als 'Normaly Closed' oder 'Normaly Open' betrieben werden können.
 
-% #TODO: schreiben
+
 \subsection{Aktoren}
 
 Als Aktoren wurden zwei ACT 24HS5430D8L2 NEMA23 Steppermotoren verwendet, da diese das für uns notwendige Haltemoment von 150~$N \cdot cm$ bieten. Das Funktionsprinzip eines Steppermotors ist die Ausrichtung eines Stators durch Erzeugung geeigneter Magnetfelder, mithilfe zweier Spulen. Der Aufbau des Motors ist auf der rechten Seite von \autoref{fig:schaltplan} ersichtlich. \newline
