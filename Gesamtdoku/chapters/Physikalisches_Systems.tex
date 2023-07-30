@@ -6,14 +6,25 @@
 %     \item Welche möglichen Störgrößen würden Sie erwarten?
 % Was für ein System wollen Sie betrachten, was für Gesetzmäßigkeiten liegen vor?
 
-Zylinderspule die parallel gewickelt wird; Draht kann als Raumkurve aufgefasst werden; daraus abgeleitet das Wineklgeschwindigkeit von HA und NA direkt prop. ist;
-
-=> linearer Umrechnungsfaktor zwischen HA und NA
-    Stellkonzept: schnellere Motor wird gesteuert, langsamere folgt mit faktor nachlesen
+Die verwendeten Spulenkörper sind geometrisch allesamt Zylinder. Somit ist für die Modellierung der Drahtwicklung nur die Umrandungskurve der Grundfläche und die Höhe des Zylinders ausschlaggebend. Der gewickelte Draht kann dementsprechend als Raumkurve aufgefasst werden, woraus wiederum das Verhältnis der Winkelgeschwindigkeit $\omega$ von Hauptachse $HA$ und Nebenachse $NA$ abgeleitet werden kann. Für eine parallele Wicklung besteht ein linearer Zusammenhang zwischen den Winkelgeschwindigkeiten der Achsen. Es gilt:
 
 \begin{equation}
-    \omega_{HA} = \omega_{NA} \cdot \alpha
+    \omega_{HA} = \pm K_{xy} \cdot \omega_{NA}
 \end{equation}
+Das Vorzeichen bestimmt hier die Wicklungsrichtung der jeweiligen lage. Für den Skalierungsfaktor $K_{xy}$ gilt der folgende Zusammenhang:
+
+\begin{equation}
+    \label{eq:achsenskalierungsfaktor}
+    K_{xy_{ideal}} = \frac{h_G}{D \cdot 2\pi} 
+\end{equation}
+wobei $D$ den Drahtdurchmesser in \si{\milli\metre} und $h_G$ die Ganghöhe, bzw. Steigung, der Trapezspindel in \si{\milli\metre\per 2\pi} beschreibt. Abweichungen vom idealen Skalierungsfaktor können aufgrund von mehreren Störgrößen auftreten. Hierunter fallen das Umkehrspiel der Trapezmutter, Stepverluste der Motoren, elastische Verformung der Konstruktion und die Änderung des Drahtaustrittswinkels durch Verlaufen des Drahtes, bedingt durch Reibung zwischen Spulenkörper und Wickelmedium, oder Draht auf Draht. Da es für uns mit dem vorhanden Setup nicht möglich war die Störgrößen zu isolieren und einzeln zu vermessen, werden diese in dem Korrekturfaktor $C$ zusammengefasst. Daraus folgt für den realen Achsenskalierungsfaktor der folgende Zusammenhang:
+
+\begin{equation}
+    \label{eq:achsenskalierungsfaktor_real}
+    K_{xy} = \frac{h_G}{D \cdot 2\pi} \cdot C
+\end{equation}
+Hieraus abgeleitet ergibt sich für, hardware bedingt, das Stellkonzept, dass immer der, sich schneller zu drehende, Motor angesteuert wird und der zweite Motor diesem immer, skaliert mit $K_{xy}$, folgt.
+
 
 Spannsystem durch angenommen konstante Rückstellkraft der Filzpatschen; Federgetriebener Arm; theoretisch keine Auslenkung bei konst. geschwindigkeit, real schwingt er immer leicht; Feder als immer perfekt vertikal ausgelenkt aproximiert winkel vernachlässigt geschwindigkeitsabhängige Kraft HA-seitig; Draht durch WZ-Kugellager genau 180° Zug nach oben;
 
